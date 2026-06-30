@@ -429,38 +429,56 @@ function ensureOrderFields(o){o.forEach(function(x){if(!x.status)x.status='pendi
 
 var currentTab='index',prevTab='index',currentCookTab='pending',activeCat='all',searchKeyword='',editingCatId=null,selectedCatEmoji='📂';
 
-// ===== 实时同步 =====
-var ws=null,wsRetry=0,wsConnected=false;
-function connectWS(){
-  var proto=location.protocol==='https:'?'wss:':'ws:';
-  try{ws=new WebSocket(proto+'//'+location.host+'/ws')}catch(e){scheduleReconnect();return}
-  ws.onopen=function(){wsConnected=true;wsRetry=0;updateSyncStatus();showToast('🔗 已连接实时同步',1000)};
-  ws.onmessage=function(e){
-    try{
-      var msg=JSON.parse(e.data);
-      if(msg.type==='init'||msg.type==='update'){
-        if(msg.data&&msg.data.orders!==undefined){
-          localStorage.setItem('diancai_orders',JSON.stringify(msg.data.orders));
-          if(currentTab==='index')renderIndex();
-          if(currentTab==='cooking')renderCooking();
-        }
-      }
-    }catch(err){}
-  };
-  ws.onclose=function(){wsConnected=false;updateSyncStatus();scheduleReconnect()};
-  ws.onerror=function(){wsConnected=false;updateSyncStatus()};
+// ===== 实时同步（轮询模式） =====
+var syncVersion=0,syncTimer=null,syncConnected=false;
+var API_BASE=location.protocol==='file:'?'http://localhost:3000':'';
+
+function startSync(){
+  // 首次加载：从服务器拉数据
+  fetch(API_BASE+'/api/data').then(function(r){return r.json()}).then(function(d){
+    if(d&&d.orders!==undefined){
+      syncVersion=d.version||0;
+      localStorage.setItem('diancai_orders',JSON.stringify(d.orders));
+      if(currentTab==='index')renderIndex();
+      if(currentTab==='cooking')renderCooking();
+    }
+    syncConnected=true;
+    updateSyncStatus();
+  }).catch(function(){
+    syncConnected=true;
+    updateSyncStatus();
+  });
+  // 轮询：每2秒检查一次
+  pollLoop();
 }
-function scheduleReconnect(){wsRetry++;setTimeout(connectWS,Math.min(wsRetry*2000,10000))}
+
+function pollLoop(){
+  if(syncTimer)clearTimeout(syncTimer);
+  fetch(API_BASE+'/api/poll?v='+syncVersion).then(function(r){
+    if(r.status===200)return r.json();
+    return null;
+  }).then(function(d){
+    if(d&&d.orders!==undefined){
+      syncVersion=d.version||0;
+      localStorage.setItem('diancai_orders',JSON.stringify(d.orders));
+      if(currentTab==='index')renderIndex();
+      if(currentTab==='cooking')renderCooking();
+    }
+  }).catch(function(){}).finally(function(){
+    syncTimer=setTimeout(pollLoop,2000);
+  });
+}
+
 function syncOrders(orders){
   localStorage.setItem('diancai_orders',JSON.stringify(orders));
-  if(ws&&ws.readyState===WebSocket.OPEN){
-    ws.send(JSON.stringify({type:'sync',orders:orders}));
-  }
+  fetch(API_BASE+'/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orders:orders})})
+    .then(function(r){return r.json()}).then(function(d){if(d.version)syncVersion=d.version}).catch(function(){});
 }
+
 function updateSyncStatus(){
   var el=document.getElementById('syncStatus');
   if(!el)return;
-  if(wsConnected){el.textContent='🟢 实时同步中';el.style.color='#52c41a'}
+  if(syncConnected){el.textContent='🟢 实时同步中';el.style.color='#52c41a'}
   else{el.textContent='🔴 未连接';el.style.color='#FF4D4F'}
 }
 
@@ -721,17 +739,8 @@ function saveDish(){
 }
 
 function init(){
-  // 先从服务器拉取最新数据
-  fetch('/api/data').then(function(r){return r.json()}).then(function(d){
-    if(d&&d.orders!==undefined){
-      localStorage.setItem('diancai_orders',JSON.stringify(d.orders));
-    }
-    renderIndex();
-    connectWS();
-  }).catch(function(){
-    renderIndex();
-    connectWS();
-  });
+  startSync();
+  renderIndex();
   var notice=getNotice();
   if(notice&&notice.body){var sk='diancai_notice_skip_'+(notice.time||'');if(!localStorage.getItem(sk)){document.getElementById('noticeTitle').textContent=notice.title||'公告';document.getElementById('noticeBody').textContent=notice.body;document.getElementById('noticeMask').style.display='flex'}}
 }
