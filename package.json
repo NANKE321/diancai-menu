@@ -1,0 +1,12 @@
+{
+  "name": "diancai-menu",
+  "version": "1.0.0",
+  "description": "家常点菜 - 实时共享版",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

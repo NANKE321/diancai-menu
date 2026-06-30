@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#FF6B35">
+<title>家常点菜</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:#f5f5f5;color:#333;font-size:15px;overscroll-behavior:none}
+button{border:none;outline:none;cursor:pointer;font-family:inherit;-webkit-appearance:none}
+input,textarea{font-family:inherit;outline:none;-webkit-appearance:none;border-radius:0}
+::-webkit-scrollbar{display:none}
+:root{--p:#FF6B35;--pl:#FF8C42;--d:#FF4D4F;--s:#52c41a;--pu:#667eea;--bg:#f5f5f5;--r:16px;--safe-b:env(safe-area-inset-bottom,0px);--shadow:0 4px 16px rgba(0,0,0,.06);--shadow-lg:0 8px 32px rgba(0,0,0,.1)}
+
+.app{height:100vh;height:100dvh;display:flex;flex-direction:column;max-width:500px;margin:0 auto;background:var(--bg);position:relative}
+
+/* Tab */
+.tab-bar{display:flex;background:#fff;border-top:1px solid #eee;padding:6px 0 0;padding-bottom:max(8px,var(--safe-b));flex-shrink:0;z-index:100}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0 4px;color:#aaa;font-size:11px;cursor:pointer;transition:.2s;-webkit-user-select:none;user-select:none}
+.tab-item.active{color:var(--p)}
+.tab-icon{font-size:24px;line-height:1}
+
+/* Page */
+.page{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative}
+.page-col{height:100%;display:flex;flex-direction:column}
+.page-hidden{display:none!important}
+
+/* Search */
+.search-bar{padding:12px 16px;background:linear-gradient(135deg,#FF6B35,#FF8C42);flex-shrink:0}
+.search-wrap{display:flex;align-items:center;background:rgba(255,255,255,.93);border-radius:24px;padding:10px 16px}
+.search-wrap span{margin-right:8px;font-size:16px}
+.search-wrap input{flex:1;font-size:15px;color:#333;background:transparent;border:none}
+
+/* Main content - 点菜 */
+.main-content{display:flex;flex:1;overflow:hidden}
+.cat-list{width:88px;background:#fafafa;flex-shrink:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.cat-item{display:flex;flex-direction:column;align-items:center;padding:16px 0;font-size:12px;color:#888;cursor:pointer;position:relative;transition:.2s;-webkit-user-select:none;user-select:none}
+.cat-item.active{background:#fff;color:var(--p);font-weight:700}
+.cat-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3.5px;height:24px;background:var(--p);border-radius:0 4px 4px 0}
+.cat-icon{font-size:22px;margin-bottom:4px}
+.cat-name{font-size:11px}
+
+.dish-list{flex:1;padding:0 10px 12px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.dish-card{display:flex;align-items:center;background:#fff;margin:8px 0;padding:14px;border-radius:var(--r);box-shadow:0 2px 8px rgba(0,0,0,.04);cursor:pointer;transition:.12s;-webkit-user-select:none;user-select:none}
+.dish-card:active{transform:scale(.97);background:#fafafa}
+.dish-emoji{font-size:38px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;background:#FFF5F0;border-radius:14px;flex-shrink:0}
+.dish-info{flex:1;margin-left:14px;overflow:hidden}
+.dish-name{font-size:16px;font-weight:600}
+.custom-tag{font-size:10px;color:#667eea;background:#f0f5ff;padding:2px 6px;border-radius:4px;margin-left:4px}
+.dish-desc{font-size:12px;color:#aaa;margin:3px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dish-meta{display:flex;gap:6px}
+.meta-tag{font-size:11px;color:#999;background:#f5f5f5;padding:2px 8px;border-radius:6px}
+.meta-tag.easy{color:#52c41a;background:#f6ffed}
+.dish-action{margin-left:10px;display:flex;align-items:center;gap:6px;position:relative}
+.minus-btn{width:32px;height:32px;background:#f5f5f5;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#999;font-size:18px;font-weight:bold;transition:.15s}
+.minus-btn:active{background:#eee;color:#666}
+.add-btn{width:36px;height:36px;background:linear-gradient(135deg,#FF6B35,#FF8C42);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:bold;box-shadow:0 3px 10px rgba(255,107,53,.3)}
+.order-count{position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:var(--d);color:#fff;font-size:10px;min-width:18px;height:18px;line-height:18px;text-align:center;border-radius:18px;padding:0 4px;font-weight:600}
+
+/* 底部点餐栏 */
+.order-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;padding:12px 16px;padding-bottom:max(12px,var(--safe-b));box-shadow:0 -2px 12px rgba(0,0,0,.08);z-index:99;border-radius:20px 20px 0 0;flex-shrink:0;gap:10px}
+.bar-left{display:flex;align-items:center;gap:10px;flex:1}
+.cart-icon{font-size:28px}
+.bar-count{font-size:15px;font-weight:600}
+.bar-clear{color:var(--d);font-size:13px;padding:8px 12px;border-radius:20px;background:#fff2f0;white-space:nowrap;flex-shrink:0}
+.submit-btn{background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;padding:12px 28px;border-radius:24px;font-size:15px;font-weight:700;box-shadow:0 3px 12px rgba(255,107,53,.3);white-space:nowrap;flex-shrink:0}
+
+.section-title{padding:14px 10px 6px;font-size:12px;color:#bbb;font-weight:600;letter-spacing:1px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:#bbb}
+.empty-icon{font-size:64px;margin-bottom:14px}
+.empty-text{font-size:16px;color:#999}
+.empty-sub{font-size:13px;color:#ccc;margin-top:6px}
+.go-order-btn{margin-top:16px;background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;padding:12px 32px;border-radius:24px;font-size:15px;font-weight:600}
+
+/* 厨房页 */
+.cook-tabs{display:flex;background:#fff;margin:12px 16px 0;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.06);flex-shrink:0}
+.cook-tab{flex:1;text-align:center;padding:11px 0;font-size:13px;color:#aaa;border-radius:12px;font-weight:600;cursor:pointer;transition:.2s;-webkit-user-select:none;user-select:none}
+.cook-tab.active{background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;box-shadow:0 3px 12px rgba(255,107,53,.3)}
+.cook-content{padding:8px 0;flex:1;overflow-y:auto}
+
+.cook-card{background:#fff;margin:10px 16px;border-radius:20px;padding:18px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.03);transition:transform .15s,box-shadow .15s}
+.cook-header{display:flex;align-items:center;margin-bottom:14px}
+.cook-emoji{font-size:34px;width:54px;height:54px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#FFF5F0,#FFE8DD);border-radius:16px;flex-shrink:0;box-shadow:0 2px 8px rgba(255,107,53,.1)}
+.cook-info{flex:1;margin-left:14px}
+.cook-name{font-size:17px;font-weight:700;display:block}
+.cook-count{font-size:12px;color:#aaa}
+.cook-status{font-size:11px;padding:5px 14px;border-radius:20px;font-weight:700;letter-spacing:.5px}
+.cook-status.pending{color:#d48806;background:linear-gradient(135deg,#fffbe6,#fff7d6);border:1px solid #ffe58f}
+.cook-status.cooking{color:#cf1322;background:linear-gradient(135deg,#fff2f0,#ffe6e0);border:1px solid #ffa39e}
+.cook-status.done{color:#389e0d;background:linear-gradient(135deg,#f6ffed,#e6ffec);border:1px solid #b7eb8f}
+.progress-bar-wrap{background:#f0f0f0;border-radius:10px;height:12px;overflow:hidden;margin:12px 0;box-shadow:inset 0 1px 3px rgba(0,0,0,.06)}
+.progress-bar-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,#faad14,#FF6B35,#52c41a);transition:width .4s ease;box-shadow:0 1px 4px rgba(255,107,53,.2)}
+.progress-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.progress-label{font-size:11px;color:#bbb}
+.status-selector{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+.status-chip{font-size:12px;padding:7px 14px;border-radius:20px;border:1.5px solid #eee;background:#fff;color:#888;cursor:pointer;transition:.2s;-webkit-user-select:none;user-select:none;box-shadow:0 1px 4px rgba(0,0,0,.03)}
+.status-chip:active{transform:scale(.93)}
+.status-chip.active-p{border-color:#d9d9d9;background:#fafafa;color:#999;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.status-chip.active-c{border-color:#FF4D4F;background:linear-gradient(135deg,#fff2f0,#ffe6e0);color:#FF4D4F;font-weight:700;box-shadow:0 2px 8px rgba(255,77,79,.15)}
+.status-chip.active-d{border-color:#52c41a;background:linear-gradient(135deg,#f6ffed,#e6ffec);color:#52c41a;font-weight:700;box-shadow:0 2px 8px rgba(82,196,26,.15)}
+.cook-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.action-btn{font-size:13px;padding:9px 14px;border-radius:20px;flex:1;text-align:center;min-width:70px;background:#fff;cursor:pointer;transition:.2s;line-height:1.4;-webkit-user-select:none;user-select:none;font-weight:500;border:1px solid #eee}
+.action-btn:active{transform:scale(.93);opacity:.8}
+.action-btn.detail{background:linear-gradient(135deg,#f0f5ff,#e8edff);color:#2f54eb;border-color:#d6e4ff}
+.action-btn.info-btn{background:linear-gradient(135deg,#f0f5ff,#e8edff);color:#2f54eb;border-color:#d6e4ff}
+.action-btn.count-btn{background:#f5f5f5;color:#666;font-size:18px;padding:6px 12px;min-width:auto;flex:none;border-color:#eee}
+.action-btn.remove{background:linear-gradient(135deg,#fff2f0,#ffe6e0);color:var(--d);min-width:auto;padding:6px 12px;flex:none;font-size:14px;border-color:#ffccc7}
+.action-btn.start{background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;font-weight:700;border:none;box-shadow:0 3px 12px rgba(255,107,53,.25)}
+.done-card{opacity:.8;border-left:5px solid #52c41a;background:linear-gradient(135deg,#fff,#f9fff9)}
+.done-card .cook-emoji{background:linear-gradient(135deg,#f6ffed,#e6ffec)}
+.shopping-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+.shopping-title{font-size:16px;font-weight:700}
+.shopping-tip{font-size:12px;color:#bbb}
+.shopping-list{margin:0 16px}
+.shopping-item{display:flex;align-items:center;background:#fff;padding:14px 16px;border-radius:14px;margin-bottom:8px;cursor:pointer;-webkit-user-select:none;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,.03);border:1px solid rgba(0,0,0,.03);transition:.15s}
+.shopping-item:active{transform:scale(.98);background:#fafafa}
+.shopping-item.checked{background:#fafafa;opacity:.7}
+.shop-checkbox{font-size:22px;margin-right:12px}
+.shop-info{flex:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.shop-name{font-size:15px;font-weight:500;min-width:60px}
+.shop-amount{font-size:12px;color:#FF6B35;background:#FFF5F0;padding:2px 8px;border-radius:6px}
+.shop-from{font-size:11px;color:#ccc}
+.shopping-item.checked .shop-name{text-decoration:line-through;color:#ccc}
+.shop-summary{display:flex;gap:10px;margin:0 16px 12px}
+.shop-summary-card{flex:1;background:#fff;border-radius:16px;padding:16px;text-align:center;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.03)}
+.shop-summary-num{font-size:24px;font-weight:800}
+.shop-summary-num.primary{color:#FF6B35}
+.shop-summary-num.success{color:#52c41a}
+.shop-summary-num.danger{color:#FF4D4F}
+.shop-summary-label{font-size:11px;color:#bbb;margin-top:3px}
+.clear-btn{text-align:center;color:var(--d);font-size:15px;padding:16px;margin:10px 16px;background:#fff;border-radius:12px;cursor:pointer;font-weight:600;-webkit-user-select:none;user-select:none}
+.clear-btn:active{background:#fff2f0}
+
+/* 管理页 */
+#page-manage{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.manage-nav{display:flex;background:#fff;margin:12px 16px 0;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.06);flex-shrink:0;position:sticky;top:0;z-index:10}
+.manage-nav-item{flex:1;text-align:center;padding:11px 0;font-size:13px;color:#aaa;border-radius:12px;font-weight:600;cursor:pointer;transition:.2s;-webkit-user-select:none;user-select:none}
+.manage-nav-item.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;box-shadow:0 3px 12px rgba(102,126,234,.3)}
+.manage-panel{display:none}
+.manage-panel.active{display:block}
+.stats-row{display:flex;gap:10px;padding:0 16px;margin-top:14px}
+.stat-card{flex:1;background:#fff;border-radius:20px;padding:18px;text-align:center;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.03)}
+.stat-num{font-size:26px;font-weight:800;color:#FF6B35}
+.stat-label{font-size:11px;color:#bbb;margin-top:3px}
+.manage-section{background:#fff;margin:12px 16px;border-radius:20px;overflow:hidden;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.03)}
+.manage-section-header{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid #f0f0f0}
+.manage-section-title{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px}
+.manage-section-action{font-size:12px;color:#667eea;padding:6px 12px;border-radius:14px;background:#f0f0ff;cursor:pointer;font-weight:600}
+.cat-manage-item{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid #f5f5f5;gap:12px}
+.cat-manage-item:last-child{border-bottom:none}
+.cat-manage-icon{font-size:26px}
+.cat-manage-name{flex:1;font-size:15px;font-weight:600}
+.cat-manage-count{font-size:12px;color:#bbb;margin-right:10px}
+.cat-manage-actions{display:flex;gap:8px}
+.cat-manage-btn{width:36px;height:36px;border:none;border-radius:12px;font-size:16px;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;transition:.15s}
+.cat-manage-btn:active{transform:scale(.9)}
+.cat-manage-btn.edit{background:linear-gradient(135deg,#f0f5ff,#e8edff);color:#2f54eb}
+.cat-manage-btn.delete{background:linear-gradient(135deg,#fff2f0,#ffe6e0);color:var(--d)}
+.cat-manage-btn.builtin{background:#f5f5f5;color:#ccc}
+.dish-manage-item{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid #f5f5f5;gap:12px}
+.dish-manage-item:last-child{border-bottom:none}
+.dish-manage-emoji{font-size:26px}
+.dish-manage-info{flex:1;overflow:hidden}
+.dish-manage-name{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dish-manage-cat{font-size:11px;color:#bbb}
+.dish-manage-actions{display:flex;gap:8px}
+.dish-manage-btn{width:36px;height:36px;border:none;border-radius:12px;font-size:16px;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;transition:.15s}
+.dish-manage-btn:active{transform:scale(.9)}
+.dish-manage-btn.edit{background:linear-gradient(135deg,#f0f5ff,#e8edff);color:#2f54eb}
+.dish-manage-btn.delete{background:linear-gradient(135deg,#fff2f0,#ffe6e0);color:var(--d)}
+.add-new-dish-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;margin:12px 16px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:20px;font-size:16px;font-weight:700;box-shadow:0 6px 20px rgba(102,126,234,.35);cursor:pointer;transition:.2s}
+.add-new-dish-btn:active{transform:scale(.97);box-shadow:0 3px 10px rgba(102,126,234,.25)}
+.notice-edit-area{width:100%;border:1.5px solid #eee;border-radius:12px;padding:12px;font-size:15px;color:#333;min-height:100px;resize:vertical}
+.manage-group-title{padding:18px 16px 8px;font-size:13px;color:#bbb;font-weight:600}
+.io-section{display:flex;gap:10px;padding:12px 16px}
+.io-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#fff;border-radius:20px;font-size:15px;font-weight:700;border:1.5px solid #eee;box-shadow:var(--shadow);cursor:pointer;transition:.2s}
+.io-btn:active{transform:scale(.95)}
+.io-btn.export{color:#389e0d;background:linear-gradient(135deg,#f6ffed,#e6ffec);border-color:#b7eb8f}
+.io-btn.import{color:#2f54eb;background:linear-gradient(135deg,#f0f5ff,#e8edff);border-color:#adc6ff}
+
+/* 详情页 */
+#page-detail{overflow-y:auto;-webkit-overflow-scrolling:touch}
+.detail-page{background:#f5f5f5;padding-bottom:100px}
+.detail-header{background:linear-gradient(135deg,#FF6B35,#FF8C42);padding:20px;display:flex;align-items:center;color:#fff}
+.back-arrow{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.2);border-radius:50%;font-size:20px;cursor:pointer;margin-right:14px;flex-shrink:0;-webkit-user-select:none;user-select:none}
+.back-arrow:active{background:rgba(255,255,255,.35)}
+.header-emoji{font-size:64px;width:88px;height:88px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.2);border-radius:20px;margin-right:18px}
+.header-info{flex:1}
+.header-name{font-size:24px;font-weight:800;display:block;margin-bottom:4px}
+.header-desc{font-size:13px;opacity:.9;display:block;margin-bottom:10px}
+.header-tags{display:flex;gap:8px}
+.h-tag{font-size:11px;background:rgba(255,255,255,.25);padding:3px 10px;border-radius:8px}
+.section{background:#fff;margin:12px 16px;border-radius:20px;padding:18px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.03)}
+.section-title2{font-size:17px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section-icon{font-size:22px}
+.ingredient-list{display:flex;flex-wrap:wrap;gap:8px}
+.ingredient-item{display:flex;align-items:center;background:#f8f8f8;padding:8px 14px;border-radius:12px;gap:8px;font-size:13px;transition:.15s}
+.ingredient-item.need-buy{background:linear-gradient(135deg,#FFF5F0,#FFE8DD);border:1.5px solid #FFD6C4;box-shadow:0 1px 4px rgba(255,107,53,.08)}
+.ingredient-item.pantry{background:linear-gradient(135deg,#f6ffed,#e6ffec);border:1.5px solid #d9f7be;box-shadow:0 1px 4px rgba(82,196,26,.08)}
+.ing-name{font-weight:600}
+.ing-amount{color:#999;font-size:12px}
+.ing-tag{font-size:10px;color:#FF6B35;background:#fff;padding:2px 6px;border-radius:4px}
+.ing-tag.pantry-tag{color:#52c41a}
+.step-list{display:flex;flex-direction:column;gap:10px}
+.step-item{display:flex;align-items:flex-start;padding:14px;background:#fafafa;border-radius:14px;cursor:pointer;-webkit-user-select:none;user-select:none;border:1px solid rgba(0,0,0,.03);transition:.2s}
+.step-item:active{background:#f0f0f0;transform:scale(.98)}
+.step-item.active{background:linear-gradient(135deg,#f6ffed,#e6ffec);border-left:5px solid #52c41a;box-shadow:0 2px 8px rgba(82,196,26,.1)}
+.step-num{width:28px;height:28px;min-width:28px;background:#FF6B35;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:12px}
+.step-item.active .step-num{background:#52c41a}
+.step-text{font-size:15px;color:#444;line-height:1.8;flex:1}
+.detail-footer{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;padding:14px 16px;padding-bottom:max(14px,var(--safe-b));box-shadow:0 -2px 12px rgba(0,0,0,.06);background:#fff;display:flex;gap:12px;z-index:10}
+.footer-btn{text-align:center;padding:16px;border-radius:28px;font-size:17px;font-weight:700;flex:2}
+.footer-btn:active{transform:scale(.97)}
+.footer-btn.add{background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;box-shadow:0 4px 16px rgba(255,107,53,.3)}
+.footer-btn.edit-btn{background:#f0f5ff;color:#2f54eb;flex:1;font-size:15px}
+.footer-btn.del-btn{background:linear-gradient(135deg,#fff2f0,#ffe6e0);color:#FF4D4F;flex:0.8;font-size:15px;border:1px solid #ffccc7}
+
+/* 编辑页 */
+.editor-page{min-height:100%;background:#f5f5f5}
+.editor-header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.back-btn{font-size:24px;background:rgba(255,255,255,.15);width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer}
+.editor-title{font-size:18px;font-weight:700}
+.save-btn{background:rgba(255,255,255,.2);color:#fff;padding:8px 20px;border-radius:18px;font-size:15px;font-weight:600;cursor:pointer}
+.editor-body{padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.form-group{background:#fff;border-radius:20px;padding:18px;margin-bottom:14px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,.03)}
+.form-label{font-size:13px;color:#bbb;margin-bottom:10px;display:block;font-weight:600}
+.form-input{width:100%;border:1.5px solid #eee;border-radius:10px;padding:12px;font-size:15px;color:#333}
+.form-input:focus{border-color:var(--p)}
+.form-row{display:flex;gap:10px}
+.emoji-picker{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.emoji-option{width:44px;height:44px;font-size:24px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;border-radius:14px;border:2.5px solid transparent;cursor:pointer;transition:.2s}
+.emoji-option:active{transform:scale(.88)}
+.emoji-option.selected{border-color:var(--p);background:linear-gradient(135deg,#FFF5F0,#FFE8DD);box-shadow:0 2px 10px rgba(255,107,53,.2)}
+.cat-picker{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.cat-option{padding:8px 16px;font-size:14px;background:#f5f5f5;border-radius:20px;border:2px solid transparent;cursor:pointer;transition:.2s}
+.cat-option.selected{border-color:var(--p);background:linear-gradient(135deg,#FFF5F0,#FFE8DD);color:var(--p);font-weight:700;box-shadow:0 2px 10px rgba(255,107,53,.15)}
+.diff-picker{display:flex;gap:10px;margin-top:8px}
+.diff-option{padding:8px 18px;font-size:14px;background:#f5f5f5;border-radius:20px;border:2px solid transparent;cursor:pointer;transition:.2s}
+.diff-option.selected{border-color:var(--p);background:linear-gradient(135deg,#FFF5F0,#FFE8DD);color:var(--p);font-weight:700;box-shadow:0 2px 10px rgba(255,107,53,.15)}
+.dynamic-list{margin-top:10px}
+.dynamic-item{display:flex;align-items:center;gap:10px;margin-bottom:10px;background:#fafafa;padding:12px;border-radius:14px;border:1px solid rgba(0,0,0,.03)}
+.dynamic-item input{flex:1;border:1.5px solid #eee;border-radius:8px;padding:9px 12px;font-size:14px}
+.dynamic-item input:focus{border-color:var(--p)}
+.ing-name-input{flex:2}
+.ing-amount-input{flex:1;max-width:90px}
+.step-input{flex:1}
+.step-num-label{color:#bbb;font-size:12px;min-width:24px;text-align:center;font-weight:600}
+.del-row{width:32px;height:32px;background:linear-gradient(135deg,#fff2f0,#ffe6e0);color:var(--d);border-radius:50%;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;border:1px solid #ffccc7}
+.buy-toggle{display:flex;align-items:center;gap:3px;flex-shrink:0;cursor:pointer}
+.buy-label{font-size:11px;color:#bbb}
+.add-row-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;color:var(--p);font-size:14px;border:2px dashed #FFD6C4;border-radius:14px;background:linear-gradient(135deg,#FFF5F0,#FFE8DD);margin-top:6px;cursor:pointer;font-weight:700;transition:.2s}
+.add-row-btn:active{transform:scale(.97)}
+
+/* 弹窗 */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#fff;border-radius:20px;padding:28px 22px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.15)}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:18px;text-align:center}
+.modal-input{width:100%;border:1.5px solid #eee;border-radius:12px;padding:12px 16px;font-size:15px;margin-bottom:12px}
+.modal-emoji-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;justify-content:center}
+.modal-emoji-opt{width:40px;height:40px;font-size:22px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;border-radius:10px;border:2.5px solid transparent;cursor:pointer}
+.modal-emoji-opt.selected{border-color:var(--p);background:#FFF5F0}
+.modal-actions{display:flex;gap:12px;margin-top:8px}
+.modal-btn{flex:1;padding:12px;border-radius:24px;font-size:15px;font-weight:700;cursor:pointer}
+.modal-btn:active{transform:scale(.97)}
+.modal-btn.cancel{background:#f5f5f5;color:#666}
+.modal-btn.confirm{background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff}
+.notice-mask{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px}
+.notice-box{background:#fff;border-radius:24px;width:100%;max-width:360px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.2)}
+.notice-header{background:linear-gradient(135deg,#FF6B35,#FF8C42);padding:24px 20px 18px;text-align:center;color:#fff}
+.notice-icon{font-size:44px;margin-bottom:8px}
+.notice-title{font-size:20px;font-weight:800}
+.notice-body{padding:24px;font-size:15px;line-height:1.9;color:#333;max-height:320px;overflow-y:auto;white-space:pre-wrap}
+.notice-footer{padding:0 24px 24px;text-align:center}
+.notice-close-btn{background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff;border:none;padding:12px 48px;border-radius:26px;font-size:16px;font-weight:700;box-shadow:0 4px 16px rgba(255,107,53,.3);cursor:pointer}
+.toast-container{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:9999;pointer-events:none}
+.toast-box{background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:12px;font-size:15px;max-width:80%;text-align:center}
+.confirm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:center;justify-content:center;padding:24px}
+.confirm-box{background:#fff;border-radius:20px;padding:28px 22px;width:100%;max-width:320px;text-align:center}
+.confirm-title{font-size:18px;font-weight:700;margin-bottom:10px}
+.confirm-content{font-size:15px;color:#888;margin-bottom:22px;line-height:1.6}
+.confirm-actions{display:flex;gap:12px}
+.confirm-btn{flex:1;padding:12px;border-radius:24px;font-size:15px;font-weight:700;cursor:pointer}
+.confirm-btn:active{transform:scale(.97)}
+.confirm-btn.cancel{background:#f5f5f5;color:#666}
+.confirm-btn.ok{background:linear-gradient(135deg,#FF6B35,#FF8C42);color:#fff}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- 点菜页 -->
+  <div class="page page-col" id="page-index">
+    <div class="search-bar">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span id="syncStatus" style="font-size:11px;color:#aaa"></span>
+      </div>
+      <div class="search-wrap"><span>🔍</span><input type="text" placeholder="搜你想吃的..." id="searchInput" oninput="onSearch()"></div>
+    </div>
+    <div class="main-content">
+      <div class="cat-list" id="catList"></div>
+      <div class="dish-list" id="dishList"></div>
+    </div>
+    <div class="order-bar" id="orderBar" style="display:none">
+      <div class="bar-left"><span class="cart-icon">🛒</span><span class="bar-count" id="barCount">已选 0 道菜</span></div>
+      <span class="bar-clear" onclick="clearAllOrders()">清空</span>
+      <button class="submit-btn" onclick="goToCooking()">下单 🛒</button>
+    </div>
+  </div>
+  <!-- 厨房页 -->
+  <div class="page page-col page-hidden" id="page-cooking">
+    <div class="cook-tabs">
+      <div class="cook-tab active" data-tab="pending" onclick="switchCookTab(this,'pending')">🍳 待做</div>
+      <div class="cook-tab" data-tab="shopping" onclick="switchCookTab(this,'shopping')">🛒 购物清单</div>
+      <div class="cook-tab" data-tab="completed" onclick="switchCookTab(this,'completed')">✅ 已完成</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+      <div id="cookPanelPending" class="cook-content"></div>
+      <div id="cookPanelShopping" class="cook-content" style="display:none"></div>
+      <div id="cookPanelCompleted" class="cook-content" style="display:none"></div>
+    </div>
+  </div>
+  <!-- 管理页 -->
+  <div class="page page-col page-hidden" id="page-manage"></div>
+  <!-- 详情页 -->
+  <div class="page page-col page-hidden" id="page-detail"></div>
+  <!-- 编辑页 -->
+  <div class="page page-hidden" id="page-editor"></div>
+  <!-- Tab栏 -->
+  <div class="tab-bar" id="tabBar">
+    <div class="tab-item active" onclick="switchTab('index',this)"><span class="tab-icon">📋</span><span>点菜</span></div>
+    <div class="tab-item" onclick="switchTab('cooking',this)"><span class="tab-icon">👨‍🍳</span><span>厨房</span></div>
+    <div class="tab-item" onclick="switchTab('manage',this)"><span class="tab-icon">⚙️</span><span>管理</span></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastBox" style="display:none"><div class="toast-box" id="toastText"></div></div>
+<div class="confirm-overlay" id="confirmOverlay" style="display:none">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">确认</div>
+    <div class="confirm-content" id="confirmContent"></div>
+    <div class="confirm-actions"><button class="confirm-btn cancel" onclick="confirmCancel()">取消</button><button class="confirm-btn ok" onclick="confirmOk()">确定</button></div>
+  </div>
+</div>
+<div class="notice-mask" id="noticeMask" style="display:none" onclick="closeNotice()">
+  <div class="notice-box" onclick="event.stopPropagation()">
+    <div class="notice-header"><div class="notice-icon">📢</div><div class="notice-title" id="noticeTitle"></div></div>
+    <div class="notice-body" id="noticeBody"></div>
+    <div class="notice-footer"><button class="notice-close-btn" onclick="closeNotice()">知道了</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="catModal" style="display:none" onclick="closeCatModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" id="catModalTitle">添加分类</div>
+    <input class="modal-input" id="catModalName" placeholder="分类名称">
+    <div class="modal-emoji-row" id="catEmojiRow"></div>
+    <div class="modal-actions"><button class="modal-btn cancel" onclick="closeCatModal()">取消</button><button class="modal-btn confirm" onclick="saveCat()">确定</button></div>
+  </div>
+</div>
+
+<script>
+var defaultCategories=[{id:'meat',name:'荤菜',icon:'🥩'},{id:'veg',name:'素菜',icon:'🥬'},{id:'soup',name:'汤品',icon:'🍲'},{id:'staple',name:'主食',icon:'🍚'},{id:'cold',name:'凉菜',icon:'🥗'}];
+var defaultDishes=[
+  {id:1,name:'番茄炒蛋',category:'meat',emoji:'🍅',difficulty:'简单',time:'10分钟',desc:'经典家常菜，酸甜下饭',ingredients:[{name:'番茄',amount:'2个',buy:1},{name:'鸡蛋',amount:'3个',buy:1},{name:'葱',amount:'适量',buy:1},{name:'盐',amount:'适量',buy:0},{name:'糖',amount:'少许',buy:0},{name:'食用油',amount:'适量',buy:0}],steps:['番茄洗净切块，鸡蛋打散加少许盐搅匀','热锅凉油，倒入蛋液，炒至凝固盛出备用','锅中少许油，放入番茄块翻炒出汁','加入炒好的鸡蛋，加盐、少许糖调味','翻炒均匀，撒葱花出锅']},
+  {id:2,name:'可乐鸡翅',category:'meat',emoji:'🍗',difficulty:'简单',time:'30分钟',desc:'甜香入味，老少皆宜',ingredients:[{name:'鸡翅中',amount:'500g',buy:1},{name:'可乐',amount:'1罐(330ml)',buy:1},{name:'生姜',amount:'3片',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'老抽',amount:'1勺',buy:0},{name:'料酒',amount:'1勺',buy:0}],steps:['鸡翅两面划两刀，冷水下锅焯水去腥，捞出沥干','锅中少许油，放入鸡翅煎至两面金黄','加入姜片、生抽、老抽、料酒翻炒上色','倒入可乐没过鸡翅，大火煮开转小火焖20分钟','大火收汁至浓稠即可']},
+  {id:3,name:'青椒肉丝',category:'meat',emoji:'🫑',difficulty:'简单',time:'15分钟',desc:'下饭神器，简单快手',ingredients:[{name:'猪里脊',amount:'200g',buy:1},{name:'青椒',amount:'2个',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'1勺',buy:0},{name:'料酒',amount:'1勺',buy:0},{name:'淀粉',amount:'适量',buy:0},{name:'盐',amount:'适量',buy:0}],steps:['猪肉切丝，加生抽、料酒、淀粉腌制10分钟','青椒去籽切丝，大蒜切末','热锅凉油，滑入肉丝炒至变色盛出','锅中少许油，爆香蒜末，放入青椒丝翻炒','加入肉丝，加盐调味，翻炒均匀出锅']},
+  {id:4,name:'红烧排骨',category:'meat',emoji:'🍖',difficulty:'中等',time:'45分钟',desc:'软烂入味，经典硬菜',ingredients:[{name:'猪小排',amount:'500g',buy:1},{name:'生姜',amount:'3片',buy:1},{name:'大葱',amount:'1段',buy:1},{name:'八角',amount:'2个',buy:0},{name:'冰糖',amount:'适量',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'老抽',amount:'1勺',buy:0},{name:'料酒',amount:'2勺',buy:0}],steps:['排骨冷水下锅，加料酒焯水，捞出洗净','锅中少许油，放入冰糖小火炒至枣红色','放入排骨翻炒上色，加入姜片、葱段、八角','加生抽、老抽、料酒，倒入热水没过排骨','大火煮开转小火炖30分钟，大火收汁即可']},
+  {id:5,name:'宫保鸡丁',category:'meat',emoji:'🌶️',difficulty:'中等',time:'20分钟',desc:'麻辣鲜香，经典川菜',ingredients:[{name:'鸡胸肉',amount:'300g',buy:1},{name:'花生米',amount:'50g',buy:1},{name:'干辣椒',amount:'6个',buy:1},{name:'花椒',amount:'适量',buy:0},{name:'大葱',amount:'2段',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'醋',amount:'1勺',buy:0},{name:'糖',amount:'1勺',buy:0},{name:'淀粉',amount:'适量',buy:0}],steps:['鸡胸肉切丁，加生抽、料酒、淀粉腌制15分钟','调碗汁：生抽、醋、糖、淀粉、少许水拌匀','花生米小火炸至酥脆备用','热油爆香干辣椒段和花椒，放入鸡丁滑炒变色','加入葱段蒜末翻炒，倒入碗汁快速翻炒','最后加入花生米翻匀出锅']},
+  {id:6,name:'糖醋里脊',category:'meat',emoji:'🥓',difficulty:'中等',time:'25分钟',desc:'酸甜酥脆，大人小孩都爱',ingredients:[{name:'猪里脊',amount:'300g',buy:1},{name:'鸡蛋',amount:'1个',buy:1},{name:'淀粉',amount:'适量',buy:0},{name:'番茄酱',amount:'3勺',buy:1},{name:'白醋',amount:'2勺',buy:0},{name:'白糖',amount:'3勺',buy:0},{name:'盐',amount:'少许',buy:0}],steps:['里脊切条，加盐、料酒腌制10分钟','鸡蛋打散，加入淀粉搅成糊，放入肉条挂糊','油温六成热，炸至金黄捞出，复炸一次更酥','锅留底油，加番茄酱、白醋、糖、少许水炒成酱汁','倒入炸好的里脊快速翻炒裹匀酱汁即可']},
+  {id:7,name:'蒜蓉西兰花',category:'veg',emoji:'🥦',difficulty:'简单',time:'10分钟',desc:'清淡健康，营养丰富',ingredients:[{name:'西兰花',amount:'1颗',buy:1},{name:'大蒜',amount:'5瓣',buy:1},{name:'蚝油',amount:'1勺',buy:0},{name:'盐',amount:'适量',buy:0},{name:'食用油',amount:'适量',buy:0}],steps:['西兰花掰成小朵，淡盐水浸泡10分钟洗净','烧开水，加少许油和盐，焯水1分钟捞出','大蒜切末，热锅凉油爆香蒜末','放入西兰花翻炒，加蚝油、盐调味','翻炒均匀即可出锅']},
+  {id:8,name:'干煸豆角',category:'veg',emoji:'🫘',difficulty:'简单',time:'15分钟',desc:'焦香入味，超级下饭',ingredients:[{name:'四季豆',amount:'400g',buy:1},{name:'猪肉末',amount:'100g',buy:1},{name:'干辣椒',amount:'4个',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'1勺',buy:0},{name:'盐',amount:'适量',buy:0}],steps:['豆角去筋掰段，干辣椒切段，蒜切末','锅中多放油，放入豆角煸至表皮起皱微焦，盛出','锅中留少许油，炒香肉末至变色','加入干辣椒、蒜末爆香','倒入豆角，加生抽、盐翻炒均匀出锅']},
+  {id:9,name:'地三鲜',category:'veg',emoji:'🍆',difficulty:'简单',time:'20分钟',desc:'东北经典，鲜香浓郁',ingredients:[{name:'茄子',amount:'1个',buy:1},{name:'土豆',amount:'1个',buy:1},{name:'青椒',amount:'1个',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'蚝油',amount:'1勺',buy:0},{name:'糖',amount:'少许',buy:0},{name:'淀粉',amount:'适量',buy:0}],steps:['茄子切滚刀块，土豆切块，青椒切块','土豆炸至金黄捞出，茄子炸软捞出','锅留底油，爆香蒜末','倒入所有食材，加生抽、蚝油、糖翻炒','淋入水淀粉勾芡，翻匀出锅']},
+  {id:10,name:'醋溜白菜',category:'veg',emoji:'🥬',difficulty:'简单',time:'10分钟',desc:'酸爽开胃，快手家常',ingredients:[{name:'大白菜',amount:'半颗',buy:1},{name:'干辣椒',amount:'4个',buy:1},{name:'花椒',amount:'少许',buy:0},{name:'大蒜',amount:'3瓣',buy:1},{name:'醋',amount:'2勺',buy:0},{name:'生抽',amount:'1勺',buy:0},{name:'糖',amount:'1勺',buy:0},{name:'盐',amount:'适量',buy:0}],steps:['白菜叶和帮分开，斜刀切片，蒜切末','热锅凉油，爆香花椒、干辣椒','先放白菜帮大火翻炒1分钟','再放白菜叶翻炒至断生','加醋、生抽、糖、盐调味，撒蒜末翻匀出锅']},
+  {id:11,name:'紫菜蛋花汤',category:'soup',emoji:'🥚',difficulty:'简单',time:'10分钟',desc:'清淡鲜美，百搭汤品',ingredients:[{name:'紫菜',amount:'适量',buy:1},{name:'鸡蛋',amount:'2个',buy:1},{name:'虾皮',amount:'一小把',buy:1},{name:'香菜',amount:'适量',buy:1},{name:'盐',amount:'适量',buy:0},{name:'香油',amount:'几滴',buy:0}],steps:['紫菜撕碎，鸡蛋打散，香菜切末','锅中烧开水，放入紫菜和虾皮','煮1分钟后，缓缓倒入蛋液，用筷子轻轻搅动','加盐调味，滴几滴香油','撒上香菜末即可']},
+  {id:12,name:'番茄蛋汤',category:'soup',emoji:'🍅',difficulty:'简单',time:'15分钟',desc:'酸甜暖胃，家家户户都会做',ingredients:[{name:'番茄',amount:'2个',buy:1},{name:'鸡蛋',amount:'2个',buy:1},{name:'葱',amount:'适量',buy:1},{name:'盐',amount:'适量',buy:0},{name:'香油',amount:'几滴',buy:0}],steps:['番茄去皮切小块，鸡蛋打散','锅中少许油，放入番茄翻炒出汁','加入适量清水，大火煮开','转小火，缓缓倒入蛋液形成蛋花','加盐调味，滴香油，撒葱花出锅']},
+  {id:13,name:'玉米排骨汤',category:'soup',emoji:'🌽',difficulty:'简单',time:'60分钟',desc:'鲜甜滋补，营养满分',ingredients:[{name:'排骨',amount:'400g',buy:1},{name:'甜玉米',amount:'1根',buy:1},{name:'胡萝卜',amount:'1根',buy:1},{name:'生姜',amount:'3片',buy:1},{name:'盐',amount:'适量',buy:0},{name:'料酒',amount:'1勺',buy:0}],steps:['排骨冷水下锅加料酒焯水，捞出洗净','玉米切段，胡萝卜切滚刀块','砂锅中放入排骨、姜片，加足量清水','大火煮开转小火炖40分钟','加入玉米和胡萝卜继续炖20分钟','加盐调味即可']},
+  {id:14,name:'蛋炒饭',category:'staple',emoji:'🍳',difficulty:'简单',time:'10分钟',desc:'粒粒分明，简单美味',ingredients:[{name:'隔夜米饭',amount:'1大碗',buy:0},{name:'鸡蛋',amount:'2个',buy:1},{name:'葱',amount:'适量',buy:1},{name:'火腿肠',amount:'1根',buy:1},{name:'盐',amount:'适量',buy:0},{name:'食用油',amount:'适量',buy:0}],steps:['鸡蛋打散，火腿肠切丁，葱切葱花','热锅凉油，倒入蛋液炒散盛出','锅中少许油，放入火腿丁翻炒','倒入米饭，大火翻炒至粒粒分明','加入炒好的鸡蛋，加盐调味','撒葱花翻匀出锅']},
+  {id:15,name:'葱油拌面',category:'staple',emoji:'🍜',difficulty:'简单',time:'15分钟',desc:'葱香四溢，简单快手',ingredients:[{name:'面条',amount:'200g',buy:1},{name:'大葱',amount:'3根',buy:1},{name:'生抽',amount:'3勺',buy:0},{name:'老抽',amount:'1勺',buy:0},{name:'白糖',amount:'1勺',buy:0},{name:'食用油',amount:'多量',buy:0}],steps:['大葱切段，面条煮熟捞出过凉水沥干','锅中倒入较多油，小火放入葱段慢慢炸','炸至葱段焦黄酥脆，关火','趁热加入生抽、老抽、糖搅匀成葱油汁','将葱油汁淋在面条上拌匀即可']},
+  {id:16,name:'凉拌黄瓜',category:'cold',emoji:'🥒',difficulty:'简单',time:'10分钟',desc:'爽脆开胃，夏日必备',ingredients:[{name:'黄瓜',amount:'2根',buy:1},{name:'大蒜',amount:'4瓣',buy:1},{name:'小米辣',amount:'2个',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'醋',amount:'2勺',buy:0},{name:'香油',amount:'1勺',buy:0},{name:'白糖',amount:'半勺',buy:0},{name:'盐',amount:'适量',buy:0}],steps:['黄瓜洗净拍碎，切成小段','大蒜切末，小米辣切圈','碗中加蒜末、小米辣、生抽、醋、香油、糖、盐调成料汁','将料汁浇在黄瓜上','拌匀腌制5分钟即可食用']},
+  {id:17,name:'皮蛋豆腐',category:'cold',emoji:'🫕',difficulty:'简单',time:'5分钟',desc:'冰凉爽口，零失败',ingredients:[{name:'内酯豆腐',amount:'1盒',buy:1},{name:'皮蛋',amount:'2个',buy:1},{name:'香菜',amount:'适量',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'香油',amount:'1勺',buy:0},{name:'醋',amount:'少许',buy:0}],steps:['豆腐取出扣在盘中，用刀划成块','皮蛋去皮切小块，摆在豆腐上','淋上生抽、香油、少许醋','撒上香菜末即可']},
+  {id:18,name:'酸辣土豆丝',category:'cold',emoji:'🥔',difficulty:'简单',time:'15分钟',desc:'酸辣爽脆，经典下饭菜',ingredients:[{name:'土豆',amount:'2个',buy:1},{name:'干辣椒',amount:'4个',buy:1},{name:'花椒',amount:'少许',buy:0},{name:'大蒜',amount:'3瓣',buy:1},{name:'白醋',amount:'2勺',buy:0},{name:'盐',amount:'适量',buy:0}],steps:['土豆去皮切细丝，泡入清水中去除淀粉','干辣椒切段，蒜切末','热锅凉油，爆香花椒和干辣椒','放入沥干的土豆丝大火翻炒','加入白醋和盐，翻炒至断生','撒蒜末翻匀出锅']},
+  {id:19,name:'鱼香肉丝',category:'meat',emoji:'🐟',difficulty:'中等',time:'20分钟',desc:'酸甜微辣，经典川菜',ingredients:[{name:'猪里脊',amount:'250g',buy:1},{name:'木耳',amount:'适量',buy:1},{name:'胡萝卜',amount:'1根',buy:1},{name:'青椒',amount:'1个',buy:1},{name:'郫县豆瓣酱',amount:'1勺',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'醋',amount:'2勺',buy:0},{name:'糖',amount:'2勺',buy:0},{name:'淀粉',amount:'适量',buy:0}],steps:['猪肉切丝，加生抽、料酒、淀粉腌制10分钟','木耳泡发切丝，胡萝卜、青椒切丝','调碗汁：生抽、醋、糖、淀粉、少许水拌匀','热油滑炒肉丝至变色盛出','锅中爆香豆瓣酱，放入配菜翻炒','倒入肉丝，淋碗汁快速翻炒均匀出锅']},
+  {id:20,name:'麻婆豆腐',category:'meat',emoji:'🫕',difficulty:'简单',time:'15分钟',desc:'麻辣鲜香，下饭神器',ingredients:[{name:'嫩豆腐',amount:'1块',buy:1},{name:'猪肉末',amount:'100g',buy:1},{name:'郫县豆瓣酱',amount:'1勺',buy:1},{name:'花椒粉',amount:'适量',buy:0},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'1勺',buy:0},{name:'淀粉',amount:'适量',buy:0}],steps:['豆腐切小块，焯水捞出沥干','锅中少许油，炒香肉末至变色','加入豆瓣酱炒出红油，加蒜末','加适量清水煮开，放入豆腐小火焖3分钟','淋入水淀粉勾芡，撒花椒粉出锅']},
+  {id:21,name:'回锅肉',category:'meat',emoji:'🥩',difficulty:'中等',time:'25分钟',desc:'肥而不腻，川菜之王',ingredients:[{name:'五花肉',amount:'300g',buy:1},{name:'蒜苗',amount:'3根',buy:1},{name:'青椒',amount:'2个',buy:1},{name:'郫县豆瓣酱',amount:'1勺',buy:1},{name:'甜面酱',amount:'半勺',buy:1},{name:'生抽',amount:'1勺',buy:0},{name:'生姜',amount:'3片',buy:1}],steps:['五花肉冷水下锅加姜片煮至八成熟，捞出切薄片','蒜苗切段，青椒切块','锅不放油，放入肉片煸炒至出油微卷','加入豆瓣酱、甜面酱炒出红油','放入蒜苗和青椒翻炒至断生','加生抽调味出锅']},
+  {id:22,name:'水煮肉片',category:'meat',emoji:'🌶️',difficulty:'中等',time:'30分钟',desc:'麻辣鲜嫩，过瘾大菜',ingredients:[{name:'猪里脊',amount:'300g',buy:1},{name:'豆芽',amount:'200g',buy:1},{name:'生菜',amount:'适量',buy:1},{name:'干辣椒',amount:'10个',buy:1},{name:'花椒',amount:'适量',buy:0},{name:'郫县豆瓣酱',amount:'1勺',buy:1},{name:'鸡蛋清',amount:'1个',buy:1},{name:'淀粉',amount:'适量',buy:0}],steps:['肉切薄片，加蛋清、淀粉、盐腌制15分钟','豆芽、生菜焯水铺在碗底','锅中爆香豆瓣酱，加水煮开','放入肉片滑散煮至变色，倒在蔬菜上','另起锅烧热油，放入干辣椒和花椒炸香','热油浇在肉片上滋啦作响即可']},
+  {id:23,name:'辣子鸡',category:'meat',emoji:'🐔',difficulty:'中等',time:'25分钟',desc:'香辣酥脆，越嚼越香',ingredients:[{name:'鸡腿肉',amount:'400g',buy:1},{name:'干辣椒',amount:'一大把',buy:1},{name:'花椒',amount:'适量',buy:0},{name:'大蒜',amount:'5瓣',buy:1},{name:'生姜',amount:'3片',buy:1},{name:'料酒',amount:'1勺',buy:0},{name:'生抽',amount:'1勺',buy:0},{name:'白芝麻',amount:'适量',buy:0}],steps:['鸡腿肉切小块，加料酒、生抽、淀粉腌制15分钟','油温六成热，放入鸡块炸至金黄捞出','锅留底油，放入大量干辣椒段和花椒小火炒香','放入蒜片姜片爆香','倒入鸡块翻炒均匀','撒白芝麻翻匀出锅']},
+  {id:24,name:'啤酒鸭',category:'meat',emoji:'🦆',difficulty:'中等',time:'40分钟',desc:'酒香浓郁，鸭肉酥烂',ingredients:[{name:'鸭肉',amount:'半只',buy:1},{name:'啤酒',amount:'1罐',buy:1},{name:'青椒',amount:'2个',buy:1},{name:'生姜',amount:'4片',buy:1},{name:'八角',amount:'2个',buy:0},{name:'桂皮',amount:'1小块',buy:0},{name:'生抽',amount:'2勺',buy:0},{name:'老抽',amount:'1勺',buy:0}],steps:['鸭肉斩块，冷水下锅焯水捞出','锅中少许油，放入鸭块煸炒至出油','加入姜片、八角、桂皮炒香','加生抽、老抽翻炒上色','倒入啤酒没过鸭肉，大火煮开转小火炖30分钟','放入青椒块，大火收汁出锅']},
+  {id:25,name:'梅菜扣肉',category:'meat',emoji:'🥩',difficulty:'较难',time:'90分钟',desc:'肥而不腻，入口即化',ingredients:[{name:'五花肉',amount:'500g',buy:1},{name:'梅干菜',amount:'100g',buy:1},{name:'生姜',amount:'3片',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'老抽',amount:'1勺',buy:0},{name:'料酒',amount:'2勺',buy:0},{name:'白糖',amount:'1勺',buy:0}],steps:['五花肉整块冷水下锅煮至八成熟','捞出擦干，抹老抽，用油煎至皮面金黄','切厚片，用生抽、老抽、料酒、糖腌制20分钟','梅干菜泡发洗净切碎，炒香','肉片皮朝下码在碗中，铺上梅干菜','上锅蒸60分钟，倒扣在盘中即可']},
+  {id:26,name:'清炒时蔬',category:'veg',emoji:'🥬',difficulty:'简单',time:'8分钟',desc:'清淡爽口，原汁原味',ingredients:[{name:'时令蔬菜',amount:'300g',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'盐',amount:'适量',buy:0},{name:'食用油',amount:'适量',buy:0}],steps:['蔬菜洗净切段，大蒜切末','热锅凉油，爆香蒜末','放入蔬菜大火翻炒','加盐调味，炒至断生出锅']},
+  {id:27,name:'虎皮青椒',category:'veg',emoji:'🫑',difficulty:'简单',time:'10分钟',desc:'微辣开胃，超级下饭',ingredients:[{name:'青椒',amount:'6个',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'醋',amount:'1勺',buy:0},{name:'糖',amount:'半勺',buy:0}],steps:['青椒去蒂去籽，拍扁','锅不放油，放入青椒干煸至表皮起皱发虎皮色','盛出，锅中少许油爆香蒜末','放入青椒，加生抽、醋、糖翻炒均匀出锅']},
+  {id:28,name:'干锅花菜',category:'veg',emoji:'🥦',difficulty:'简单',time:'15分钟',desc:'焦香入味，比肉还好吃',ingredients:[{name:'花菜',amount:'1颗',buy:1},{name:'五花肉',amount:'100g',buy:1},{name:'干辣椒',amount:'4个',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'1勺',buy:0},{name:'蚝油',amount:'1勺',buy:0}],steps:['花菜掰成小朵，五花肉切片','锅中少许油，放入五花肉煸炒出油','加入干辣椒和蒜末爆香','放入花菜大火翻炒至边缘微焦','加生抽、蚝油调味，翻炒均匀出锅']},
+  {id:29,name:'手撕包菜',category:'veg',emoji:'🥬',difficulty:'简单',time:'10分钟',desc:'酸辣爽脆，快手家常',ingredients:[{name:'圆白菜',amount:'半颗',buy:1},{name:'干辣椒',amount:'4个',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'醋',amount:'2勺',buy:0},{name:'生抽',amount:'1勺',buy:0}],steps:['圆白菜手撕成块，蒜切末','热锅凉油，爆香干辣椒和蒜末','放入包菜大火快炒至断生','加醋和生抽调味，翻匀出锅']},
+  {id:30,name:'香菇油菜',category:'veg',emoji:'🍄',difficulty:'简单',time:'12分钟',desc:'鲜香嫩滑，营养搭配',ingredients:[{name:'油菜',amount:'300g',buy:1},{name:'鲜香菇',amount:'6朵',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'蚝油',amount:'1勺',buy:0},{name:'盐',amount:'适量',buy:0}],steps:['油菜洗净，香菇切片，蒜切末','烧开水，加少许油和盐，焯水油菜捞出摆盘','锅中少许油，爆香蒜末，放入香菇翻炒','加蚝油和少许水焖2分钟','将香菇浇在油菜上即可']},
+  {id:31,name:'冬瓜排骨汤',category:'soup',emoji:'🍲',difficulty:'简单',time:'60分钟',desc:'清热消暑，鲜甜可口',ingredients:[{name:'排骨',amount:'400g',buy:1},{name:'冬瓜',amount:'300g',buy:1},{name:'生姜',amount:'3片',buy:1},{name:'枸杞',amount:'适量',buy:1},{name:'盐',amount:'适量',buy:0},{name:'料酒',amount:'1勺',buy:0}],steps:['排骨冷水下锅加料酒焯水捞出','冬瓜去皮切块','砂锅中放入排骨和姜片，加足量清水','大火煮开转小火炖40分钟','加入冬瓜继续炖15分钟','加盐调味，撒枸杞出锅']},
+  {id:32,name:'酸辣汤',category:'soup',emoji:'🥣',difficulty:'简单',time:'15分钟',desc:'酸辣开胃，暖身必备',ingredients:[{name:'豆腐',amount:'半块',buy:1},{name:'鸡蛋',amount:'1个',buy:1},{name:'木耳',amount:'适量',buy:1},{name:'火腿肠',amount:'1根',buy:1},{name:'香菜',amount:'适量',buy:1},{name:'醋',amount:'3勺',buy:0},{name:'白胡椒粉',amount:'适量',buy:0},{name:'淀粉',amount:'适量',buy:0}],steps:['豆腐、木耳、火腿切丝，鸡蛋打散','锅中加水煮开，放入豆腐、木耳、火腿丝','加醋、白胡椒粉、盐调味','淋入水淀粉勾芡','缓缓倒入蛋液形成蛋花','撒香菜末出锅']},
+  {id:33,name:'萝卜牛腩汤',category:'soup',emoji:'🥕',difficulty:'简单',time:'80分钟',desc:'软烂入味，滋补暖胃',ingredients:[{name:'牛腩',amount:'500g',buy:1},{name:'白萝卜',amount:'1根',buy:1},{name:'生姜',amount:'4片',buy:1},{name:'八角',amount:'2个',buy:0},{name:'料酒',amount:'2勺',buy:0},{name:'盐',amount:'适量',buy:0}],steps:['牛腩切块冷水下锅焯水捞出','白萝卜去皮切滚刀块','砂锅中放入牛腩、姜片、八角，加足量清水','大火煮开转小火炖60分钟','加入萝卜继续炖20分钟','加盐调味即可']},
+  {id:34,name:'炸酱面',category:'staple',emoji:'🍝',difficulty:'简单',time:'20分钟',desc:'浓郁酱香，老北京味',ingredients:[{name:'面条',amount:'200g',buy:1},{name:'猪肉末',amount:'150g',buy:1},{name:'甜面酱',amount:'3勺',buy:1},{name:'黄瓜',amount:'1根',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'1勺',buy:0},{name:'糖',amount:'半勺',buy:0}],steps:['黄瓜切丝，蒜切末','锅中少许油，炒香肉末至变色','加入甜面酱、生抽、糖小火翻炒5分钟','面条煮熟捞出过凉水','浇上炸酱，放黄瓜丝，拌匀即可']},
+  {id:35,name:'炒米粉',category:'staple',emoji:'🍜',difficulty:'简单',time:'15分钟',desc:'干香入味，简单快手',ingredients:[{name:'干米粉',amount:'200g',buy:1},{name:'鸡蛋',amount:'2个',buy:1},{name:'豆芽',amount:'100g',buy:1},{name:'火腿肠',amount:'1根',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'老抽',amount:'半勺',buy:0},{name:'葱',amount:'适量',buy:1}],steps:['米粉提前泡软沥干，鸡蛋打散','热锅炒散鸡蛋盛出','锅中少许油，放入火腿丁和豆芽翻炒','加入米粉，加生抽、老抽大火翻炒','加入炒好的鸡蛋，撒葱花翻匀出锅']},
+  {id:36,name:'饺子',category:'staple',emoji:'🥟',difficulty:'较难',time:'60分钟',desc:'皮薄馅大，团团圆圆',ingredients:[{name:'饺子皮',amount:'500g',buy:1},{name:'猪肉馅',amount:'300g',buy:1},{name:'白菜',amount:'半颗',buy:1},{name:'葱',amount:'适量',buy:1},{name:'生姜',amount:'适量',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'香油',amount:'1勺',buy:0}],steps:['白菜剁碎挤水，与肉馅混合','加葱姜末、生抽、香油、盐搅拌上劲','取饺子皮包入馅料捏紧','烧开水下饺子，点三次凉水','煮至饺子浮起鼓肚即可捞出']},
+  {id:37,name:'凉拌木耳',category:'cold',emoji:'🍄',difficulty:'简单',time:'10分钟',desc:'爽脆开胃，低卡健康',ingredients:[{name:'黑木耳',amount:'适量',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'小米辣',amount:'2个',buy:1},{name:'香菜',amount:'适量',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'醋',amount:'2勺',buy:0},{name:'香油',amount:'1勺',buy:0}],steps:['木耳泡发洗净，焯水捞出过凉水沥干','蒜切末，小米辣切圈，香菜切段','碗中加蒜末、小米辣、生抽、醋、香油调成料汁','浇在木耳上拌匀','撒香菜即可食用']},
+  {id:38,name:'凉拌海带丝',category:'cold',emoji:'🌊',difficulty:'简单',time:'10分钟',desc:'酸辣爽口，开胃小菜',ingredients:[{name:'海带丝',amount:'200g',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'小米辣',amount:'2个',buy:1},{name:'白芝麻',amount:'适量',buy:0},{name:'生抽',amount:'2勺',buy:0},{name:'醋',amount:'2勺',buy:0},{name:'辣椒油',amount:'1勺',buy:0}],steps:['海带丝焯水捞出过凉水沥干','蒜切末，小米辣切圈','碗中加蒜末、小米辣、生抽、醋、辣椒油调成料汁','浇在海带丝上拌匀','撒白芝麻即可']},
+  {id:39,name:'口水鸡',category:'cold',emoji:'🍗',difficulty:'中等',time:'30分钟',desc:'麻辣鲜香，口水直流',ingredients:[{name:'鸡腿',amount:'2个',buy:1},{name:'花生碎',amount:'适量',buy:1},{name:'葱',amount:'适量',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'醋',amount:'1勺',buy:0},{name:'辣椒油',amount:'2勺',buy:0},{name:'花椒油',amount:'1勺',buy:0},{name:'白糖',amount:'半勺',buy:0}],steps:['鸡腿冷水下锅煮15分钟，关火焖10分钟','捞出放入冰水中浸泡至凉','调酱汁：生抽、醋、辣椒油、花椒油、糖、蒜末拌匀','鸡腿切块摆盘','淋上酱汁，撒花生碎和葱花即可']},
+  {id:40,name:'红烧茄子',category:'veg',emoji:'🍆',difficulty:'简单',time:'15分钟',desc:'软糯入味，超级下饭',ingredients:[{name:'茄子',amount:'2根',buy:1},{name:'大蒜',amount:'3瓣',buy:1},{name:'生抽',amount:'2勺',buy:0},{name:'蚝油',amount:'1勺',buy:0},{name:'糖',amount:'半勺',buy:0},{name:'淀粉',amount:'适量',buy:0}],steps:['茄子切滚刀块，裹薄淀粉','热油炸至金黄软糯捞出','锅留底油，爆香蒜末','加生抽、蚝油、糖和少许水煮开','倒入茄子翻炒均匀，淋水淀粉勾芡出锅']}
+];
+var EMOJI_OPTIONS=['🍅','🍗','🫑','🍖','🌶️','🥓','🥦','🫘','🍆','🥬','🥚','🌽','🍳','🍜','🥒','🫕','🥔','🥩','🦐','🐟','🦑','🥗','🍲','🍛','🍝','🥘','🍕','🌮','🍱','🫔','🧆','🍰'];
+var DIFF_OPTIONS=['简单','中等','较难'];
+var CAT_EMOJI_OPTIONS=['🥩','🥬','🍲','🍚','🥗','🍜','🍰','🧃','🦐','🐟','🍕','🌮','🍱','🍛','🥘','🍝','🧆','🫔','🧁','🍩','🍿','🥤','🫖','☕','🍺'];
+var STATUS_MAP={pending:{label:'待烹饪',icon:'⏳',cls:'pending'},preparing:{label:'准备中',icon:'🔪',cls:'cooking'},cooking:{label:'烹饪中',icon:'🔥',cls:'cooking'},done:{label:'已完成',icon:'✅',cls:'done'}};
+var STATUS_ORDER=['pending','preparing','cooking','done'];
+
+function getCustomCats(){try{return JSON.parse(localStorage.getItem('diancai_custom_cats'))||[]}catch(e){return[]}}
+function saveCustomCats(c){localStorage.setItem('diancai_custom_cats',JSON.stringify(c))}
+function getCustomDishes(){try{return JSON.parse(localStorage.getItem('diancai_custom_dishes'))||[]}catch(e){return[]}}
+function saveCustomDishes(d){localStorage.setItem('diancai_custom_dishes',JSON.stringify(d))}
+function getOrders(){try{return JSON.parse(localStorage.getItem('diancai_orders'))||[]}catch(e){return[]}}
+function saveOrders(o){syncOrders(o)}
+function getNotice(){try{return JSON.parse(localStorage.getItem('diancai_notice'))}catch(e){return null}}
+function getShopChecked(){try{return JSON.parse(localStorage.getItem('diancai_shop_checked'))||[]}catch(e){return[]}}
+function saveShopChecked(l){localStorage.setItem('diancai_shop_checked',JSON.stringify(l))}
+function getAllCategories(){return defaultCategories.concat(getCustomCats())}
+function getDeletedDishes(){try{return JSON.parse(localStorage.getItem('diancai_deleted_dishes'))||[]}catch(e){return[]}}
+function saveDeletedDishes(d){localStorage.setItem('diancai_deleted_dishes',JSON.stringify(d))}
+function getAllDishes(){var deleted=new Set(getDeletedDishes());return defaultDishes.filter(function(d){return !deleted.has(d.id)}).concat(getCustomDishes())}
+function findDish(id){var deleted=new Set(getDeletedDishes());if(deleted.has(id))return null;var a=getAllDishes();for(var i=0;i<a.length;i++){if(a[i].id===id)return a[i]}return null}
+function getStatusProgress(s){var i=STATUS_ORDER.indexOf(s);return i<0?0:(i/(STATUS_ORDER.length-1))*100}
+function ensureOrderFields(o){o.forEach(function(x){if(!x.status)x.status='pending';if(x.stepProgress===undefined)x.stepProgress=-1});return o}
+
+var currentTab='index',prevTab='index',currentCookTab='pending',activeCat='all',searchKeyword='',editingCatId=null,selectedCatEmoji='📂';
+
+// ===== 实时同步 =====
+var ws=null,wsRetry=0,wsConnected=false;
+function connectWS(){
+  var proto=location.protocol==='https:'?'wss:':'ws:';
+  try{ws=new WebSocket(proto+'//'+location.host+'/ws')}catch(e){scheduleReconnect();return}
+  ws.onopen=function(){wsConnected=true;wsRetry=0;updateSyncStatus();showToast('🔗 已连接实时同步',1000)};
+  ws.onmessage=function(e){
+    try{
+      var msg=JSON.parse(e.data);
+      if(msg.type==='init'||msg.type==='update'){
+        if(msg.data&&msg.data.orders!==undefined){
+          localStorage.setItem('diancai_orders',JSON.stringify(msg.data.orders));
+          if(currentTab==='index')renderIndex();
+          if(currentTab==='cooking')renderCooking();
+        }
+      }
+    }catch(err){}
+  };
+  ws.onclose=function(){wsConnected=false;updateSyncStatus();scheduleReconnect()};
+  ws.onerror=function(){wsConnected=false;updateSyncStatus()};
+}
+function scheduleReconnect(){wsRetry++;setTimeout(connectWS,Math.min(wsRetry*2000,10000))}
+function syncOrders(orders){
+  localStorage.setItem('diancai_orders',JSON.stringify(orders));
+  if(ws&&ws.readyState===WebSocket.OPEN){
+    ws.send(JSON.stringify({type:'sync',orders:orders}));
+  }
+}
+function updateSyncStatus(){
+  var el=document.getElementById('syncStatus');
+  if(!el)return;
+  if(wsConnected){el.textContent='🟢 实时同步中';el.style.color='#52c41a'}
+  else{el.textContent='🔴 未连接';el.style.color='#FF4D4F'}
+}
+
+function showToast(m,d){var b=document.getElementById('toastBox');document.getElementById('toastText').textContent=m;b.style.display='flex';setTimeout(function(){b.style.display='none'},d||1500)}
+var _ccb=null;
+function showConfirm(t,c,cb){document.getElementById('confirmTitle').textContent=t;document.getElementById('confirmContent').textContent=c;document.getElementById('confirmOverlay').style.display='flex';_ccb=cb}
+function confirmOk(){document.getElementById('confirmOverlay').style.display='none';if(_ccb)_ccb()}
+function confirmCancel(){document.getElementById('confirmOverlay').style.display='none'}
+
+function switchTab(name,el){
+  if(currentTab!==name)prevTab=currentTab;
+  currentTab=name;
+  ['index','cooking','manage','detail','editor'].forEach(function(p){document.getElementById('page-'+p).classList.toggle('page-hidden',p!==name)});
+  document.querySelectorAll('.tab-item').forEach(function(t){t.classList.remove('active')});
+  if(el)el.classList.add('active');
+  document.getElementById('tabBar').style.display=(name==='detail'||name==='editor')?'none':'flex';
+  if(name==='index')renderIndex();
+  if(name==='cooking')renderCooking();
+  if(name==='manage')renderManage();
+}
+
+function renderIndex(){
+  var cats=getAllCategories(),allDishes=getAllDishes(),orders=ensureOrderFields(getOrders());
+  var countMap={};orders.forEach(function(o){countMap[o.id]=o.count});allDishes.forEach(function(d){d.orderCount=countMap[d.id]||0});
+  var catHtml='<div class="cat-item'+(activeCat==='all'?' active':'')+'" onclick="selectCat(\'all\')"><span class="cat-icon">📋</span><span class="cat-name">全部</span></div>';
+  cats.forEach(function(c){catHtml+='<div class="cat-item'+(activeCat===c.id?' active':'')+'" onclick="selectCat(\''+c.id+'\')"><span class="cat-icon">'+c.icon+'</span><span class="cat-name">'+c.name+'</span></div>'});
+  document.getElementById('catList').innerHTML=catHtml;
+  var filtered=allDishes.slice();
+  if(activeCat!=='all')filtered=filtered.filter(function(d){return d.category===activeCat});
+  if(searchKeyword){var kw=searchKeyword.toLowerCase();filtered=filtered.filter(function(d){return d.name.toLowerCase().indexOf(kw)>=0||d.desc.toLowerCase().indexOf(kw)>=0||d.ingredients.some(function(i){return i.name.toLowerCase().indexOf(kw)>=0})})}
+  var catNameMap={};cats.forEach(function(c){catNameMap[c.id]=c.name});
+  var grouped=[],lastCat='';
+  filtered.forEach(function(d){if(d.category!==lastCat){grouped.push({catName:catNameMap[d.category]||d.category,dishes:[]});lastCat=d.category}grouped[grouped.length-1].dishes.push(d)});
+  var dishHtml='';
+  if(filtered.length===0){dishHtml='<div class="empty-state"><div class="empty-icon">🍽️</div><div class="empty-text">没有找到相关菜品</div></div>'}
+  else{grouped.forEach(function(g){dishHtml+='<div class="section-title">'+g.catName+'</div>';g.dishes.forEach(function(d){dishHtml+='<div class="dish-card" onclick="openDetail('+d.id+')"><div class="dish-emoji">'+d.emoji+'</div><div class="dish-info"><div class="dish-name">'+d.name+(d.isCustom?'<span class="custom-tag">自定义</span>':'')+'</div><div class="dish-desc">'+d.desc+'</div><div class="dish-meta"><span class="meta-tag'+(d.difficulty==='简单' ? ' easy' : '')+'">'+d.difficulty+'</span><span class="meta-tag">⏱️ '+d.time+'</span></div></div><div class="dish-action">'+(d.orderCount>0?'<div class="minus-btn" onclick="event.stopPropagation();decreaseDish('+d.id+')">−</div>':'')+'<div style="position:relative"><div class="add-btn" onclick="event.stopPropagation();addDish('+d.id+')">＋</div>'+(d.orderCount>0?'<div class="order-count">'+d.orderCount+'</div>':'')+'</div></div></div>'})})}
+  document.getElementById('dishList').innerHTML=dishHtml;
+  var totalCount=0;orders.forEach(function(o){totalCount+=o.count});
+  document.getElementById('orderBar').style.display=totalCount>0?'flex':'none';
+  document.getElementById('barCount').textContent='已选 '+totalCount+' 道菜';
+}
+function onSearch(){searchKeyword=document.getElementById('searchInput').value;renderIndex()}
+function selectCat(id){activeCat=id;renderIndex()}
+function addDish(id){var dish=findDish(id);if(!dish)return;var orders=ensureOrderFields(getOrders());var ex=null;for(var i=0;i<orders.length;i++){if(orders[i].id===id){ex=orders[i];break}}if(ex)ex.count++;else orders.push({id:dish.id,name:dish.name,emoji:dish.emoji,count:1,status:'pending',stepProgress:-1});saveOrders(orders);showToast('已添加 '+dish.name);renderIndex()}
+function decreaseDish(id){var orders=ensureOrderFields(getOrders());for(var i=0;i<orders.length;i++){if(orders[i].id===id){orders[i].count--;if(orders[i].count<=0)orders.splice(i,1);break}}saveOrders(orders);renderIndex()}
+function goToCooking(){switchTab('cooking',document.querySelectorAll('.tab-item')[1])}
+function goBack(){var target=prevTab||'index';var tabEl=null;document.querySelectorAll('.tab-item').forEach(function(t,i){if(['index','cooking','manage'][i]===target)tabEl=t});switchTab(target,tabEl)}
+function clearAllOrders(){showConfirm('清空订单','确定清空全部已选菜品？',function(){saveOrders([]);renderIndex();showToast('已清空')})}
+
+function switchCookTab(el,tab){
+  currentCookTab=tab;
+  document.querySelectorAll('.cook-tab').forEach(function(t){t.classList.toggle('active',t.dataset.tab===tab)});
+  document.getElementById('cookPanelPending').style.display=tab==='pending'?'block':'none';
+  document.getElementById('cookPanelShopping').style.display=tab==='shopping'?'block':'none';
+  document.getElementById('cookPanelCompleted').style.display=tab==='completed'?'block':'none';
+  renderCooking();
+}
+
+function renderCooking(){
+  var orders=ensureOrderFields(getOrders());
+  var pendingOrders=orders.filter(function(o){return o.status!=='done'});
+  var pendingTotal=0,cookingCount=0;
+  pendingOrders.forEach(function(o){pendingTotal+=o.count;if(o.status==='cooking')cookingCount+=o.count;var dish=findDish(o.id);o.stepTotal=dish?dish.steps.length:0;o.hasSteps=dish&&dish.steps&&dish.steps.length>0;o.progress=getStatusProgress(o.status)});
+  var ph='';
+  if(pendingOrders.length===0){ph='<div class="empty-state"><div class="empty-icon">👨‍🍳</div><div class="empty-text">没有待做的菜</div><button class="go-order-btn" onclick="switchTab(\'index\',document.querySelectorAll(\'.tab-item\')[0])">去点菜 →</button></div>'}
+  else{
+    ph+='<div class="shopping-header"><span class="shopping-title">🔥 厨房看板</span><span class="shopping-tip">待做 '+pendingTotal+' 道'+(cookingCount>0?' · 烹饪中 '+cookingCount+' 道':'')+'</span></div>';
+    pendingOrders.forEach(function(o){
+      var sm=STATUS_MAP[o.status];
+      ph+='<div class="cook-card"><div class="cook-header"><div class="cook-emoji">'+o.emoji+'</div><div class="cook-info"><span class="cook-name">'+o.name+'</span><span class="cook-count">× '+o.count+'</span></div><span class="cook-status '+sm.cls+'">'+sm.icon+' '+sm.label+'</span></div>';
+      ph+='<div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:'+o.progress+'%"></div></div>';
+      ph+='<div class="progress-info"><span class="progress-label">做菜进度</span>'+(o.hasSteps?'<span class="progress-label">步骤 '+(o.stepProgress+1)+'/'+o.stepTotal+'</span>':'')+'</div>';
+      ph+='<div class="status-selector">';
+      STATUS_ORDER.forEach(function(st){var s=STATUS_MAP[st];ph+='<span class="status-chip'+(o.status===st?' active-'+s.cls.charAt(0):'')+'" onclick="changeStatus('+o.id+',\''+st+'\')">'+s.icon+' '+s.label+'</span>'});
+      ph+='</div><div class="cook-actions">';
+      if(o.hasSteps)ph+='<button class="action-btn detail" onclick="openCookDetail('+o.id+')">📋 步骤</button>';
+      ph+='<button class="action-btn info-btn" onclick="openCookDetail('+o.id+')">🥬 食材</button>';
+      ph+='<button class="action-btn count-btn" onclick="changeCount('+o.id+',-1)">−</button>';
+      ph+='<button class="action-btn count-btn" onclick="changeCount('+o.id+',1)">＋</button>';
+      ph+='<button class="action-btn remove" onclick="removeDish('+o.id+')">🗑️ 删除</button>';
+      ph+='</div></div>';
+    });
+    ph+='<div class="clear-btn" onclick="clearAll()">清空全部</div>';
+  }
+  document.getElementById('cookPanelPending').innerHTML=ph;
+
+  // 购物清单
+  var ingredientMap={};
+  pendingOrders.forEach(function(o){var dish=findDish(o.id);if(!dish)return;dish.ingredients.forEach(function(ing){if(!ing.buy)return;if(!ingredientMap[ing.name])ingredientMap[ing.name]={name:ing.name,amount:ing.amount,sources:[o.name],checked:false};else ingredientMap[ing.name].sources.push(o.name)})});
+  var shopIngredients=Object.values(ingredientMap);
+  var checkedSet=new Set(getShopChecked());
+  shopIngredients.forEach(function(ing){ing.checked=checkedSet.has(ing.name);ing.sourcesStr=Array.from(new Set(ing.sources)).join('、')});
+  var shopCheckedCount=shopIngredients.filter(function(i){return i.checked}).length;
+  var sh='';
+  if(shopIngredients.length===0){sh='<div class="empty-state"><div class="empty-icon">🛒</div><div class="empty-text">没有需要购买的食材</div><button class="go-order-btn" onclick="switchTab(\'index\',document.querySelectorAll(\'.tab-item\')[0])">去点菜 →</button></div>'}
+  else{
+    sh+='<div class="shopping-header"><span class="shopping-title">🛒 购物清单</span><span class="shopping-tip">已购 '+shopCheckedCount+'/'+shopIngredients.length+'</span></div>';
+    sh+='<div class="shop-summary"><div class="shop-summary-card"><div class="shop-summary-num primary">'+shopIngredients.length+'</div><div class="shop-summary-label">总食材</div></div><div class="shop-summary-card"><div class="shop-summary-num success">'+shopCheckedCount+'</div><div class="shop-summary-label">已购买</div></div><div class="shop-summary-card"><div class="shop-summary-num danger">'+(shopIngredients.length-shopCheckedCount)+'</div><div class="shop-summary-label">待购买</div></div></div>';
+    sh+='<div class="shopping-list">';
+    shopIngredients.forEach(function(ing){sh+='<div class="shopping-item'+(ing.checked?' checked':'')+'" onclick="toggleShopItem(\''+ing.name.replace(/'/g,"\\'")+'\')"><span class="shop-checkbox">'+(ing.checked?'✅':'⬜')+'</span><div class="shop-info"><span class="shop-name">'+ing.name+'</span><span class="shop-amount">'+ing.amount+'</span><span class="shop-from">'+ing.sourcesStr+'</span></div></div>'});
+    sh+='</div>';
+    if(shopCheckedCount>0)sh+='<div class="clear-btn" onclick="clearShopChecked()">清除已购买标记</div>';
+  }
+  document.getElementById('cookPanelShopping').innerHTML=sh;
+
+  // 已完成
+  var doneOrders=orders.filter(function(o){return o.status==='done'});
+  var doneTotal=0;doneOrders.forEach(function(o){doneTotal+=o.count});
+  var dh='';
+  if(doneOrders.length===0){dh='<div class="empty-state"><div class="empty-icon">🍽️</div><div class="empty-text">还没有完成的菜</div><div class="empty-sub">做好的菜会出现在这里</div></div>'}
+  else{
+    dh+='<div class="shopping-header"><span class="shopping-title">✅ 已完成</span><span class="shopping-tip">共 '+doneTotal+' 道</span></div>';
+    doneOrders.forEach(function(o){
+      dh+='<div class="cook-card done-card"><div class="cook-header"><div class="cook-emoji">'+o.emoji+'</div><div class="cook-info"><span class="cook-name">'+o.name+'</span><span class="cook-count">× '+o.count+'</span></div><span class="cook-status done">✅ 已完成</span></div>';
+      dh+='<div class="cook-actions"><button class="action-btn start" style="flex:1" onclick="changeStatus('+o.id+',\'pending\')">↩️ 重新做</button><button class="action-btn" style="background:#fff7e6;color:#faad14;min-width:auto;padding:6px 12px" onclick="removeDish('+o.id+')">🧹 清除</button><button class="action-btn remove" style="min-width:auto;padding:6px 12px" onclick="removeDish('+o.id+')">🗑️</button></div></div>';
+    });
+    dh+='<div class="clear-btn" onclick="clearDone()">清除全部已完成</div>';
+  }
+  document.getElementById('cookPanelCompleted').innerHTML=dh;
+}
+
+function changeStatus(id,ns){var orders=ensureOrderFields(getOrders());var o=null;for(var i=0;i<orders.length;i++){if(orders[i].id===id){o=orders[i];break}}if(!o)return;o.status=ns;if(ns==='pending')o.stepProgress=-1;if(ns==='done'){var d=findDish(id);o.stepProgress=d?d.steps.length-1:0}saveOrders(orders);showToast(o.name+' '+STATUS_MAP[ns].label);renderCooking()}
+function changeCount(id,d){var orders=ensureOrderFields(getOrders());var o=null;for(var i=0;i<orders.length;i++){if(orders[i].id===id){o=orders[i];break}}if(!o)return;o.count+=d;if(o.count<=0)orders=orders.filter(function(x){return x.id!==id});saveOrders(orders);renderCooking()}
+function removeDish(id){var orders=ensureOrderFields(getOrders()).filter(function(o){return o.id!==id});saveOrders(orders);showToast('已移除');renderCooking();if(currentTab==='index')renderIndex()}
+function clearAll(){showConfirm('确认','确定清空全部订单？',function(){saveOrders([]);renderCooking();showToast('已清空')})}
+function clearDone(){var orders=ensureOrderFields(getOrders()).filter(function(o){return o.status!=='done'});saveOrders(orders);showToast('已清除完成');renderCooking()}
+function toggleShopItem(n){var c=new Set(getShopChecked());if(c.has(n))c.delete(n);else c.add(n);saveShopChecked(Array.from(c));renderCooking()}
+function clearShopChecked(){saveShopChecked([]);showToast('已清除购买标记');renderCooking()}
+
+function openDetail(id,mode){
+  var dish=findDish(id);if(!dish)return;
+  var icm=mode==='cooking';
+  var h='<div class="detail-page">';
+  h+='<div class="detail-header"><div class="back-arrow" onclick="goBack()">←</div><div class="header-emoji">'+dish.emoji+'</div><div class="header-info"><span class="header-name">'+dish.name+'</span><span class="header-desc">'+dish.desc+'</span><div class="header-tags"><span class="h-tag">'+dish.difficulty+'</span><span class="h-tag">⏱️ '+dish.time+'</span></div></div></div>';
+  h+='<div class="section"><div class="section-title2"><span class="section-icon">🥬</span>食材清单</div><div class="ingredient-list">';
+  dish.ingredients.forEach(function(ing){h+='<div class="ingredient-item '+(ing.buy?'need-buy':'pantry')+'"><span class="ing-name">'+ing.name+'</span><span class="ing-amount">'+ing.amount+'</span><span class="ing-tag '+(ing.buy?'':'pantry-tag')+'">'+(ing.buy?'需购买':'家中常备')+'</span></div>'});
+  h+='</div></div>';
+  h+='<div class="section"><div class="section-title2"><span class="section-icon">👨‍🍳</span>做法步骤</div><div class="step-list">';
+  dish.steps.forEach(function(step,i){h+='<div class="step-item" onclick="this.classList.toggle(\'active\')"><div class="step-num">'+(i+1)+'</div><span class="step-text">'+step+'</span></div>'});
+  h+='</div></div>';
+  h+='<div class="detail-footer"><button class="footer-btn add" onclick="addDishFromDetail('+dish.id+')">🛒 加入点菜单</button><button class="footer-btn edit-btn" onclick="openEditor('+dish.id+')">✏️ 编辑</button><button class="footer-btn del-btn" onclick="deleteDishFromDetail('+dish.id+')">🗑️</button></div></div>';
+  document.getElementById('page-detail').innerHTML=h;
+  switchTab('detail',null);
+}
+function addDishFromDetail(id){addDish(id);showToast('已添加')}
+function deleteDishFromDetail(id){var dish=findDish(id);if(!dish)return;showConfirm('删除菜品','确定删除「'+dish.name+'」？',function(){var isDefault=defaultDishes.some(function(d){return d.id===id});if(isDefault){var deleted=getDeletedDishes();if(!deleted.includes(id)){deleted.push(id);saveDeletedDishes(deleted)}}else{var c=getCustomDishes().filter(function(d){return d.id!==id});saveCustomDishes(c)}var o=ensureOrderFields(getOrders()).filter(function(x){return x.id!==id});saveOrders(o);showToast('已删除');goBack()})}
+function openCookDetail(id){openDetail(id,'cooking')}
+
+var manageTab='dishes';
+function switchManageTab(tab){
+  manageTab=tab;
+  document.querySelectorAll('.manage-nav-item').forEach(function(t){t.classList.toggle('active',t.dataset.mtab===tab)});
+  document.querySelectorAll('.manage-panel').forEach(function(p){p.classList.toggle('active',p.dataset.mpanel===tab)});
+}
+
+function renderManage(){
+  var cats=getAllCategories(),allDishes=getAllDishes(),customDishes=getCustomDishes();
+  var dci={};defaultCategories.forEach(function(c){dci[c.id]=true});
+  var ddi={};defaultDishes.forEach(function(d){ddi[d.id]=true});var deletedSet=new Set(getDeletedDishes());
+  var categories=cats.map(function(c){var cnt=0;allDishes.forEach(function(d){if(d.category===c.id)cnt++});return{id:c.id,name:c.name,icon:c.icon,dishCount:cnt,isBuiltin:!!dci[c.id]}});
+  var dishGroups=[];cats.forEach(function(c){var cd=allDishes.filter(function(d){return d.category===c.id});if(cd.length===0)return;dishGroups.push({catName:c.name,catIcon:c.icon,dishes:cd.map(function(d){return{id:d.id,name:d.name,emoji:d.emoji,difficulty:d.difficulty,time:d.time,isBuiltin:!!ddi[d.id]&&!deletedSet.has(d.id)}})})});
+  var notice=getNotice();
+
+  // 导航栏
+  var h='<div class="manage-nav">';
+  h+='<div class="manage-nav-item'+(manageTab==='dishes'?' active':'')+'" data-mtab="dishes" onclick="switchManageTab(\'dishes\')">🍽️ 菜品</div>';
+  h+='<div class="manage-nav-item'+(manageTab==='cats'?' active':'')+'" data-mtab="cats" onclick="switchManageTab(\'cats\')">📂 分类</div>';
+  h+='<div class="manage-nav-item'+(manageTab==='settings'?' active':'')+'" data-mtab="settings" onclick="switchManageTab(\'settings\')">⚙️ 设置</div>';
+  h+='</div>';
+
+  // ===== 菜品面板 =====
+  h+='<div class="manage-panel'+(manageTab==='dishes'?' active':'')+'" data-mpanel="dishes">';
+  h+='<div class="stats-row"><div class="stat-card"><div class="stat-num">'+allDishes.length+'</div><div class="stat-label">总菜品</div></div><div class="stat-card"><div class="stat-num">'+customDishes.length+'</div><div class="stat-label">自定义</div></div><div class="stat-card"><div class="stat-num">'+cats.length+'</div><div class="stat-label">分类数</div></div></div>';
+  h+='<button class="add-new-dish-btn" onclick="openEditor()">＋ 添加新菜品</button>';
+  dishGroups.forEach(function(g){h+='<div class="manage-section"><div class="manage-section-header"><span class="manage-section-title">'+g.catIcon+' '+g.catName+'</span><span style="font-size:12px;color:#bbb">'+g.dishes.length+' 道</span></div>';g.dishes.forEach(function(d){h+='<div class="dish-manage-item"><span class="dish-manage-emoji">'+d.emoji+'</span><div class="dish-manage-info"><div class="dish-manage-name">'+d.name+'</div><div class="dish-manage-cat">'+d.difficulty+' · '+d.time+'</div></div><div class="dish-manage-actions"><button class="dish-manage-btn edit" onclick="openEditor('+d.id+')">✏️</button>';if(!d.isBuiltin)h+='<button class="dish-manage-btn delete" onclick="deleteDish('+d.id+')">🗑️</button>';h+='</div></div>'});h+='</div>'});
+  h+='</div>';
+
+  // ===== 分类面板 =====
+  h+='<div class="manage-panel'+(manageTab==='cats'?' active':'')+'" data-mpanel="cats">';
+  h+='<div class="manage-section"><div class="manage-section-header"><span class="manage-section-title">📂 分类管理</span><span class="manage-section-action" onclick="openCatModal()">＋ 添加</span></div>';
+  categories.forEach(function(c){h+='<div class="cat-manage-item"><span class="cat-manage-icon">'+c.icon+'</span><span class="cat-manage-name">'+c.name+'</span><span class="cat-manage-count">'+c.dishCount+' 道菜</span><div class="cat-manage-actions">';if(c.isBuiltin)h+='<button class="cat-manage-btn builtin">🔒</button>';else h+='<button class="cat-manage-btn edit" onclick="openEditCatModal(\''+c.id+'\')">✏️</button><button class="cat-manage-btn delete" onclick="deleteCat(\''+c.id+'\')">🗑️</button>';h+='</div></div>'});
+  h+='</div></div>';
+
+  // ===== 设置面板 =====
+  h+='<div class="manage-panel'+(manageTab==='settings'?' active':'')+'" data-mpanel="settings">';
+  h+='<div class="manage-section"><div class="manage-section-header"><span class="manage-section-title">📢 通告设置</span><span class="manage-section-action" onclick="previewNotice()">预览</span></div><div style="padding:16px">';
+  h+='<span class="form-label" style="margin-bottom:8px">通告标题</span><input class="form-input" id="noticeTitleInput" placeholder="如：今日公告" value="'+(notice?notice.title:'')+'" style="margin-bottom:12px"/>';
+  h+='<span class="form-label" style="margin-bottom:8px">通告内容</span><textarea class="notice-edit-area" id="noticeBodyInput" placeholder="输入通告内容...">'+(notice?notice.body:'')+'</textarea>';
+  h+='<div style="display:flex;gap:10px;margin-top:12px"><button class="modal-btn confirm" style="flex:1" onclick="saveNotice()">保存通告</button><button class="modal-btn cancel" style="flex:1" onclick="clearNotice()">清空通告</button></div></div></div>';
+  h+='<div class="manage-group-title">💾 数据管理</div><div class="io-section"><button class="io-btn export" onclick="exportMenu()">📤 导出菜单</button><button class="io-btn import" onclick="importMenu()">📥 导入菜单</button></div>';
+  h+='</div>';
+
+  document.getElementById('page-manage').innerHTML=h;
+}
+
+function openCatModal(){editingCatId=null;selectedCatEmoji='📂';document.getElementById('catModalTitle').textContent='添加分类';document.getElementById('catModalName').value='';renderCatEmojiRow();document.getElementById('catModal').style.display='flex'}
+function openEditCatModal(id){var cats=getAllCategories();var cat=null;for(var i=0;i<cats.length;i++){if(cats[i].id===id){cat=cats[i];break}}if(!cat)return;editingCatId=id;selectedCatEmoji=cat.icon;document.getElementById('catModalTitle').textContent='编辑分类';document.getElementById('catModalName').value=cat.name;renderCatEmojiRow();document.getElementById('catModal').style.display='flex'}
+function closeCatModal(){document.getElementById('catModal').style.display='none'}
+function renderCatEmojiRow(){var h='';CAT_EMOJI_OPTIONS.forEach(function(e){h+='<div class="modal-emoji-opt'+(e===selectedCatEmoji?' selected':'')+'" onclick="selectCatEmoji(\''+e+'\')">'+e+'</div>'});document.getElementById('catEmojiRow').innerHTML=h}
+function selectCatEmoji(e){selectedCatEmoji=e;renderCatEmojiRow()}
+function saveCat(){var name=document.getElementById('catModalName').value.trim();if(!name){showToast('请输入分类名称');return}var custom=getCustomCats();if(editingCatId){for(var i=0;i<custom.length;i++){if(custom[i].id===editingCatId){custom[i].name=name;custom[i].icon=selectedCatEmoji;break}}}else{custom.push({id:'cat_'+Date.now(),name:name,icon:selectedCatEmoji})}saveCustomCats(custom);closeCatModal();renderManage();showToast(editingCatId?'分类已更新':'分类已添加')}
+function deleteCat(id){var ad=getAllDishes();var cd=ad.filter(function(d){return d.category===id});if(cd.length>0){showToast('该分类下还有 '+cd.length+' 道菜，请先移除');return}showConfirm('确认','确定删除该分类？',function(){var c=getCustomCats().filter(function(x){return x.id!==id});saveCustomCats(c);renderManage();showToast('分类已删除')})}
+function deleteDish(id){showConfirm('确认','确定删除该菜品？',function(){var isDefault=defaultDishes.some(function(d){return d.id===id});if(isDefault){var deleted=getDeletedDishes();if(!deleted.includes(id)){deleted.push(id);saveDeletedDishes(deleted)}}else{var c=getCustomDishes().filter(function(d){return d.id!==id});saveCustomDishes(c)}var o=ensureOrderFields(getOrders()).filter(function(x){return x.id!==id});saveOrders(o);renderManage();showToast('已删除')})}
+function saveNotice(){var body=document.getElementById('noticeBodyInput').value.trim();if(!body){showToast('请输入通告内容');return}var title=document.getElementById('noticeTitleInput').value.trim()||'公告';localStorage.setItem('diancai_notice',JSON.stringify({title:title,body:body,time:Date.now()}));showToast('通告已保存 ✅')}
+function clearNotice(){localStorage.removeItem('diancai_notice');document.getElementById('noticeTitleInput').value='';document.getElementById('noticeBodyInput').value='';showToast('通告已清空')}
+function previewNotice(){var body=document.getElementById('noticeBodyInput').value.trim();if(!body){showToast('请先输入通告内容');return}document.getElementById('noticeTitle').textContent=document.getElementById('noticeTitleInput').value.trim()||'公告';document.getElementById('noticeBody').textContent=body;document.getElementById('noticeMask').style.display='flex'}
+function closeNotice(){document.getElementById('noticeMask').style.display='none'}
+function exportMenu(){var data={version:1,exportTime:new Date().toISOString(),categories:getCustomCats(),dishes:getCustomDishes()};if(navigator.clipboard)navigator.clipboard.writeText(JSON.stringify(data,null,2));showToast('菜单已复制到剪贴板 📤')}
+function importMenu(){var text=prompt('请粘贴导出的JSON数据：');if(!text)return;try{var data=JSON.parse(text);if(!data.dishes||!Array.isArray(data.dishes)){showToast('格式不正确');return}var ec=getCustomDishes();var ei={};ec.forEach(function(d){ei[d.id]=true});var imported=0;data.dishes.forEach(function(d){if(!d.name||!d.ingredients||!d.steps)return;if(ei[d.id]){for(var i=0;i<ec.length;i++){if(ec[i].id===d.id){ec[i]=Object.assign({},d,{isCustom:true});break}}}else{ec.push(Object.assign({},d,{isCustom:true}));imported++}});saveCustomDishes(ec);if(data.categories&&Array.isArray(data.categories)){var ecc=getCustomCats();var eci={};ecc.forEach(function(c){eci[c.id]=true});data.categories.forEach(function(c){if(!eci[c.id]&&c.name)ecc.push(c)});saveCustomCats(ecc)}renderManage();showToast('导入成功！新增 '+imported+' 道菜')}catch(e){showToast('解析失败')}}
+
+function openEditor(id){
+  var isEdit=!!id,dish=isEdit?findDish(id):null,cats=getAllCategories();
+  var h='<div class="editor-page"><div class="editor-header"><div class="back-btn" onclick="switchTab(\'manage\',document.querySelectorAll(\'.tab-item\')[2])">←</div><span class="editor-title">'+(isEdit?'编辑菜品':'添加菜品')+'</span><div class="save-btn" onclick="saveDish()">保存</div></div><div class="editor-body">';
+  h+='<div class="form-group"><span class="form-label">菜品图标</span><div class="emoji-picker">';
+  EMOJI_OPTIONS.forEach(function(e){h+='<div class="emoji-option'+((isEdit&&dish.emoji===e)||(!isEdit&&e==='🍳')?' selected':'')+'" onclick="selectEditorEmoji(this,\''+e+'\')">'+e+'</div>'});
+  h+='</div></div>';
+  h+='<div class="form-group"><span class="form-label">菜品名称</span><input class="form-input" id="editorName" placeholder="如：红烧肉" value="'+(isEdit?dish.name:'')+'"></div>';
+  h+='<div class="form-group"><span class="form-label">分类</span><div class="cat-picker">';
+  cats.forEach(function(c){h+='<div class="cat-option'+((isEdit?dish.category:c.id)==='meat'||(!isEdit&&c.id==='meat')?' selected':'')+'" onclick="selectEditorCat(this,\''+c.id+'\')">'+c.icon+' '+c.name+'</div>'});
+  h+='</div></div>';
+  h+='<div class="form-row"><div class="form-group" style="flex:1"><span class="form-label">难度</span><div class="diff-picker">';
+  DIFF_OPTIONS.forEach(function(d){h+='<div class="diff-option'+((isEdit?dish.difficulty:d)==='简单'||(!isEdit&&d==='简单')?' selected':'')+'" onclick="selectEditorDiff(this,\''+d+'\')">'+d+'</div>'});
+  h+='</div></div><div class="form-group" style="flex:1"><span class="form-label">耗时</span><input class="form-input" id="editorTime" placeholder="如：20分钟" value="'+(isEdit?dish.time:'')+'"></div></div>';
+  h+='<div class="form-group"><span class="form-label">简介</span><input class="form-input" id="editorDesc" placeholder="一句话描述这道菜" value="'+(isEdit?dish.desc:'')+'"></div>';
+  h+='<div class="form-group"><span class="form-label">食材清单</span><div class="dynamic-list" id="editorIngredients">';
+  var ings=isEdit?dish.ingredients:[{name:'',amount:'',buy:1}];
+  ings.forEach(function(ing,i){h+='<div class="dynamic-item"><input class="ing-name-input" placeholder="食材名" value="'+ing.name+'" data-idx="'+i+'" data-field="name"><input class="ing-amount-input" placeholder="用量" value="'+ing.amount+'" data-idx="'+i+'" data-field="amount"><div class="buy-toggle" onclick="toggleEditorIngBuy('+i+')"><input type="checkbox"'+(ing.buy?' checked':'')+' style="transform:scale(0.7);pointer-events:none"><span class="buy-label">购</span></div><div class="del-row" onclick="removeEditorIng('+i+')">×</div></div>'});
+  h+='</div><div class="add-row-btn" onclick="addEditorIng()">＋ 添加食材</div></div>';
+  h+='<div class="form-group"><span class="form-label">做法步骤</span><div class="dynamic-list" id="editorSteps">';
+  var steps=isEdit?dish.steps:[''];
+  steps.forEach(function(step,i){h+='<div class="dynamic-item"><span class="step-num-label">'+(i+1)+'</span><input class="step-input" placeholder="步骤描述" value="'+step+'" data-idx="'+i+'"><div class="del-row" onclick="removeEditorStep('+i+')">×</div></div>'});
+  h+='</div><div class="add-row-btn" onclick="addEditorStep()">＋ 添加步骤</div></div>';
+  h+='<div style="height:40px"></div></div></div>';
+  document.getElementById('page-editor').innerHTML=h;
+  window._editorState={isEdit:isEdit,editDishId:isEdit?dish.id:null,selectedEmoji:isEdit?dish.emoji:'🍳',selectedCat:isEdit?dish.category:'meat',selectedDiff:isEdit?dish.difficulty:'简单'};
+  switchTab('editor',null);
+}
+function selectEditorEmoji(el,e){window._editorState.selectedEmoji=e;el.parentElement.querySelectorAll('.emoji-option').forEach(function(x){x.classList.remove('selected')});el.classList.add('selected')}
+function selectEditorCat(el,c){window._editorState.selectedCat=c;el.parentElement.querySelectorAll('.cat-option').forEach(function(x){x.classList.remove('selected')});el.classList.add('selected')}
+function selectEditorDiff(el,d){window._editorState.selectedDiff=d;el.parentElement.querySelectorAll('.diff-option').forEach(function(x){x.classList.remove('selected')});el.classList.add('selected')}
+function addEditorIng(){var l=document.getElementById('editorIngredients'),i=l.children.length,d=document.createElement('div');d.className='dynamic-item';d.innerHTML='<input class="ing-name-input" placeholder="食材名" data-idx="'+i+'" data-field="name"><input class="ing-amount-input" placeholder="用量" data-idx="'+i+'" data-field="amount"><div class="buy-toggle" onclick="toggleEditorIngBuy('+i+')"><input type="checkbox" checked style="transform:scale(0.7);pointer-events:none"><span class="buy-label">购</span></div><div class="del-row" onclick="removeEditorIng('+i+')">×</div>';l.appendChild(d)}
+function removeEditorIng(i){var l=document.getElementById('editorIngredients');if(l.children.length<=1)return;l.removeChild(l.children[i]);Array.from(l.children).forEach(function(item,idx){item.querySelectorAll('input[data-idx]').forEach(function(inp){inp.dataset.idx=idx});var del=item.querySelector('.del-row');if(del)del.setAttribute('onclick','removeEditorIng('+idx+')');var tg=item.querySelector('.buy-toggle');if(tg)tg.setAttribute('onclick','toggleEditorIngBuy('+idx+')')})}
+function toggleEditorIngBuy(i){var item=document.getElementById('editorIngredients').children[i];if(!item)return;var cb=item.querySelector('input[type="checkbox"]');cb.checked=!cb.checked}
+function addEditorStep(){var l=document.getElementById('editorSteps'),i=l.children.length,d=document.createElement('div');d.className='dynamic-item';d.innerHTML='<span class="step-num-label">'+(i+1)+'</span><input class="step-input" placeholder="步骤描述" data-idx="'+i+'"><div class="del-row" onclick="removeEditorStep('+i+')">×</div>';l.appendChild(d)}
+function removeEditorStep(i){var l=document.getElementById('editorSteps');if(l.children.length<=1)return;l.removeChild(l.children[i]);Array.from(l.children).forEach(function(item,idx){item.querySelector('.step-num-label').textContent=idx+1;item.querySelector('input').dataset.idx=idx;item.querySelector('.del-row').setAttribute('onclick','removeEditorStep('+idx+')')})}
+function saveDish(){
+  var st=window._editorState,name=document.getElementById('editorName').value.trim(),time=document.getElementById('editorTime').value.trim(),desc=document.getElementById('editorDesc').value.trim();
+  if(!name){showToast('请输入菜品名称');return}if(!time){showToast('请输入耗时');return}
+  var ingItems=document.getElementById('editorIngredients').children,ingredients=[];
+  for(var i=0;i<ingItems.length;i++){var ni=ingItems[i].querySelector('.ing-name-input'),ai=ingItems[i].querySelector('.ing-amount-input'),cb=ingItems[i].querySelector('input[type="checkbox"]');if(ni.value.trim())ingredients.push({name:ni.value.trim(),amount:ai.value.trim()||'适量',buy:cb.checked?1:0})}
+  if(ingredients.length===0){showToast('请至少添加一种食材');return}
+  var stepItems=document.getElementById('editorSteps').children,steps=[];
+  for(var j=0;j<stepItems.length;j++){var si=stepItems[j].querySelector('.step-input');if(si.value.trim())steps.push(si.value.trim())}
+  if(steps.length===0){showToast('请至少添加一个步骤');return}
+  var custom=getCustomDishes(),dishData={id:st.isEdit?st.editDishId:Date.now(),name:name,category:st.selectedCat,emoji:st.selectedEmoji,difficulty:st.selectedDiff,time:time,desc:desc||name,ingredients:ingredients,steps:steps,isCustom:true};
+  if(st.isEdit){var found=false;for(var k=0;k<custom.length;k++){if(custom[k].id===dishData.id){custom[k]=dishData;found=true;break}}if(!found)custom.push(dishData)}else custom.push(dishData);
+  saveCustomDishes(custom);showToast(st.isEdit?'已更新 ✅':'已添加 ✅');setTimeout(function(){switchTab('manage',document.querySelectorAll('.tab-item')[2])},800);
+}
+
+function init(){
+  // 先从服务器拉取最新数据
+  fetch('/api/data').then(function(r){return r.json()}).then(function(d){
+    if(d&&d.orders!==undefined){
+      localStorage.setItem('diancai_orders',JSON.stringify(d.orders));
+    }
+    renderIndex();
+    connectWS();
+  }).catch(function(){
+    renderIndex();
+    connectWS();
+  });
+  var notice=getNotice();
+  if(notice&&notice.body){var sk='diancai_notice_skip_'+(notice.time||'');if(!localStorage.getItem(sk)){document.getElementById('noticeTitle').textContent=notice.title||'公告';document.getElementById('noticeBody').textContent=notice.body;document.getElementById('noticeMask').style.display='flex'}}
+}
+init();
+</script>
+</body>
+</html>
